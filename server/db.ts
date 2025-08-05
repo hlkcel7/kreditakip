@@ -1,15 +1,33 @@
-import { Pool, neonConfig } from '@neondatabase/serverless';
-import { drizzle } from 'drizzle-orm/neon-serverless';
-import ws from "ws";
-import * as schema from "@shared/schema";
+import mysql from "mysql";
 
-neonConfig.webSocketConstructor = ws;
+const connection = mysql.createConnection({
+  host: "127.0.0.1",
+  user: "root",
+  password: "gorken123",
+  database: "gorkem"
+});
 
-if (!process.env.DATABASE_URL) {
-  throw new Error(
-    "DATABASE_URL must be set. Did you forget to provision a database?",
-  );
-}
+connection.connect((err) => {
+  if (err) {
+    console.error("MySQL bağlantı hatası:", err);
+    process.exit(1);
+  }
+  console.log("MySQL bağlantısı başarılı!");
+});
 
-export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-export const db = drizzle({ client: pool, schema });
+// Örnek sorgu: Tablo oluşturma
+const createProjectsTable = `CREATE TABLE IF NOT EXISTS projects (
+  id VARCHAR(36) PRIMARY KEY,
+  name TEXT NOT NULL,
+  description TEXT,
+  status TEXT NOT NULL DEFAULT 'active',
+  created_at DATETIME NOT NULL
+)`;
+
+connection.query(createProjectsTable, (err) => {
+  if (err) {
+    console.error("Tablo oluşturulamadı:", err);
+  } else {
+    console.log("projects tablosu hazır.");
+  }
+});

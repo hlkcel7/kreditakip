@@ -1,46 +1,45 @@
-import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, decimal, date, timestamp, uuid, boolean } from "drizzle-orm/pg-core";
+import { mysqlTable, varchar, text, decimal, date, datetime, boolean, timestamp } from "drizzle-orm/mysql-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-export const projects = pgTable("projects", {
-  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+export const projects = mysqlTable("projects", {
+  id: varchar("id", { length: 36 }).primaryKey().notNull(),
   name: text("name").notNull(),
   description: text("description"),
   status: text("status").notNull().default("active"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdAt: datetime("created_at").notNull(),
 });
 
-export const banks = pgTable("banks", {
-  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+export const banks = mysqlTable("banks", {
+  id: varchar("id", { length: 36 }).primaryKey().notNull(),
   name: text("name").notNull(),
   code: text("code"),
   contactInfo: text("contact_info"),
   status: text("status").notNull().default("active"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdAt: datetime("created_at").notNull(),
 });
 
-export const currencies = pgTable("currencies", {
-  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+export const currencies = mysqlTable("currencies", {
+  id: varchar("id", { length: 36 }).primaryKey().notNull(),
   code: text("code").notNull().unique(),
   name: text("name").notNull(),
   symbol: text("symbol"),
   isActive: boolean("is_active").default(true),
 });
 
-export const exchangeRates = pgTable("exchange_rates", {
-  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+export const exchangeRates = mysqlTable("exchange_rates", {
+  id: varchar("id", { length: 36 }).primaryKey().notNull(),
   fromCurrency: text("from_currency").notNull(),
   toCurrency: text("to_currency").notNull(),
   rate: decimal("rate", { precision: 12, scale: 6 }).notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  updatedAt: datetime("updated_at").notNull(),
 });
 
-export const guaranteeLetters = pgTable("guarantee_letters", {
-  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-  bankId: uuid("bank_id").notNull().references(() => banks.id),
-  projectId: uuid("project_id").notNull().references(() => projects.id),
+export const guaranteeLetters = mysqlTable("guarantee_letters", {
+  id: varchar("id", { length: 36 }).primaryKey().notNull(),
+  bankId: varchar("bank_id", { length: 36 }).notNull().references(() => banks.id),
+  projectId: varchar("project_id", { length: 36 }).notNull().references(() => projects.id),
   letterType: text("letter_type").notNull(), // teminat, avans, kesin-teminat, gecici-teminat
   contractAmount: decimal("contract_amount", { precision: 15, scale: 2 }).notNull(),
   letterPercentage: decimal("letter_percentage", { precision: 5, scale: 2 }).notNull(),
@@ -57,10 +56,10 @@ export const guaranteeLetters = pgTable("guarantee_letters", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-export const credits = pgTable("credits", {
-  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-  bankId: uuid("bank_id").notNull().references(() => banks.id),
-  projectId: uuid("project_id").notNull().references(() => projects.id),
+export const credits = mysqlTable("credits", {
+  id: varchar("id", { length: 36 }).primaryKey().notNull(),
+  bankId: varchar("bank_id", { length: 36 }).notNull().references(() => banks.id),
+  projectId: varchar("project_id", { length: 36 }).notNull().references(() => projects.id),
   principalAmount: decimal("principal_amount", { precision: 15, scale: 2 }).notNull(),
   interestAmount: decimal("interest_amount", { precision: 15, scale: 2 }).notNull(),
   totalRepaidAmount: decimal("total_repaid_amount", { precision: 15, scale: 2 }).default("0").notNull(),

@@ -107,10 +107,6 @@ export default function Dashboard() {
               </Badge>
             </div>
             <div className="flex items-center space-x-3">
-              <Button onClick={() => setIsAddLetterModalOpen(true)} className="bg-blue-600 hover:bg-blue-700">
-                <Plus className="w-4 h-4 mr-2" />
-                Yeni Mektup
-              </Button>
               <Button variant="outline" onClick={handleExportExcel} className="bg-green-600 text-white hover:bg-green-700">
                 <Download className="w-4 h-4 mr-2" />
                 Dışa Aktar
@@ -218,6 +214,10 @@ export default function Dashboard() {
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between mb-6">
                       <h3 className="text-lg font-semibold text-gray-800">Teminat Mektupları</h3>
+                      <Button onClick={() => setIsAddLetterModalOpen(true)} className="bg-blue-600 hover:bg-blue-700">
+                        <Plus className="w-4 h-4 mr-2" />
+                        Yeni Mektup
+                      </Button>
                     </div>
                     <TabulatorTable 
                       data={letters || []} 
