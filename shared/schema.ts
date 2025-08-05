@@ -15,7 +15,11 @@ export const banks = mysqlTable("banks", {
   id: varchar("id", { length: 36 }).primaryKey().notNull(),
   name: text("name").notNull(),
   code: text("code"),
-  contactInfo: text("contact_info"),
+  branchName: text("branch_name"),
+  contactPerson: text("contact_person"),
+  phone: text("phone"),
+  email: text("email"),
+  address: text("address"),
   status: text("status").notNull().default("active"),
   createdAt: datetime("created_at").notNull(),
 });
@@ -135,6 +139,9 @@ export const insertCreditSchema = createInsertSchema(credits).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+}).extend({
+  creditDate: z.coerce.date(),
+  maturityDate: z.coerce.date(),
 });
 
 // Types

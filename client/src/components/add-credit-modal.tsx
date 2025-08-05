@@ -71,8 +71,8 @@ export default function AddCreditModal({ open, onOpenChange }: AddCreditModalPro
     mutationFn: (data: FormData) => {
       const submitData = {
         ...data,
-        creditDate: new Date(data.creditDate).toISOString(),
-        maturityDate: new Date(data.maturityDate).toISOString(),
+        creditDate: new Date(data.creditDate),
+        maturityDate: new Date(data.maturityDate),
       };
       return apiRequest('POST', '/api/credits', submitData);
     },

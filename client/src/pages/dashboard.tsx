@@ -206,7 +206,8 @@ export default function Dashboard() {
                 </div>
 
                 {/* Charts */}
-                <Charts letters={letters || []} />
+                
+
               </TabsContent>
 
               <TabsContent value="letters">
@@ -220,7 +221,7 @@ export default function Dashboard() {
                       </Button>
                     </div>
                     <TabulatorTable 
-                      data={letters || []} 
+                      data={Array.isArray(letters) ? letters : []} 
                       selectedCurrency={selectedCurrency}
                       exchangeRates={exchangeRates}
                     />
@@ -240,7 +241,7 @@ export default function Dashboard() {
                     </div>
 
                     <TabulatorTable 
-                      data={credits || []} 
+                      data={Array.isArray(credits) ? credits : []} 
                       selectedCurrency={selectedCurrency}
                       exchangeRates={exchangeRates}
                       isCredits={true}
@@ -270,25 +271,25 @@ export default function Dashboard() {
                       <CardContent className="p-6">
                         <h3 className="text-lg font-semibold text-gray-800 mb-4">Yaklaşan Ödemeler</h3>
                         <div className="space-y-3">
-                          {letters?.filter(letter => {
-                            if (!letter.expiryDate) return false;
-                            const expiryDate = new Date(letter.expiryDate);
+                          {(Array.isArray(letters) ? letters : []).filter(letter => {
+                            if (!letter?.expiryDate) return false;
+                            const expiryDate = new Date(letter.expiryDate ?? '');
                             const today = new Date();
                             const thirtyDaysFromNow = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000);
                             return expiryDate >= today && expiryDate <= thirtyDaysFromNow;
                           }).map(payment => (
-                            <div key={payment.id} className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                            <div key={payment?.id ?? Math.random()} className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                               <div className="flex items-center justify-between">
-                                <span className="text-sm font-medium text-gray-900">{payment.bank?.name}</span>
+                                <span className="text-sm font-medium text-gray-900">{payment?.bank?.name ?? "Banka Yok"}</span>
                                 <Badge variant="outline" className="text-yellow-700 bg-yellow-100">
-                                  {payment.expiryDate ? 
+                                  {payment?.expiryDate ? 
                                     Math.ceil((new Date(payment.expiryDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : 0
                                   } gün
                                 </Badge>
                               </div>
-                              <p className="text-xs text-gray-600 mt-1">{payment.project?.name}</p>
+                              <p className="text-xs text-gray-600 mt-1">{payment?.project?.name ?? "Proje Yok"}</p>
                               <p className="text-sm font-semibold text-gray-900 mt-1">
-                                {formatCurrency(parseFloat(payment.letterAmount || '0'))}
+                                {formatCurrency(parseFloat(payment?.letterAmount ?? '0'))}
                               </p>
                             </div>
                           ))}
@@ -317,7 +318,7 @@ export default function Dashboard() {
                     </CardContent>
                   </Card>
                   
-                  <Charts letters={letters || []} />
+                  <Charts letters={Array.isArray(letters) ? letters : []} />
                 </div>
               </TabsContent>
             </div>

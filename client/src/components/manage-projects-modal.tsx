@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ProjectForm, ProjectFormData } from "./project-form";
 import { Badge } from "@/components/ui/badge";
 import { Pencil, Trash2, Save, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -17,6 +18,7 @@ interface ManageProjectsModalProps {
 export default function ManageProjectsModal({ open, onOpenChange }: ManageProjectsModalProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -45,6 +47,20 @@ export default function ManageProjectsModal({ open, onOpenChange }: ManageProjec
     },
   });
 
+  // Move handleEditSubmit to top-level scope
+  const handleEditSubmit = (data: ProjectFormData) => {
+    if (editingProject) {
+      updateMutation.mutate({
+        id: editingProject.id,
+        data: {
+          name: data.name,
+          description: data.description,
+          status: data.status,
+        }
+      });
+    }
+  };
+
   const deleteMutation = useMutation({
     mutationFn: (id: string) => apiRequest('DELETE', `/api/projects/${id}`),
     onSuccess: () => {
@@ -64,22 +80,27 @@ export default function ManageProjectsModal({ open, onOpenChange }: ManageProjec
   });
 
   const startEdit = (project: Project) => {
-    setEditingId(project.id);
-    setEditName(project.name);
+    setEditingProject(project);
   };
 
   const saveEdit = () => {
-    if (editingId && editName.trim()) {
-      updateMutation.mutate({
-        id: editingId,
-        data: { name: editName.trim() }
-      });
-    }
-  };
+    const handleEditSubmit = (data: ProjectFormData) => {
+      if (editingProject) {
+        updateMutation.mutate({
+          id: editingProject.id,
+          data: {
+            name: data.name,
+            description: data.description,
+            status: data.status,
+          }
+        });
+      }
+    };
+    // Missing closing bracket for saveEdit
+  }
 
   const cancelEdit = () => {
-    setEditingId(null);
-    setEditName("");
+    setEditingProject(null);
   };
 
   const deleteProject = (id: string) => {
@@ -99,15 +120,17 @@ export default function ManageProjectsModal({ open, onOpenChange }: ManageProjec
           {Array.isArray(projects) && projects.map((project) => (
             <div key={project.id} className="flex items-center justify-between p-3 border rounded-lg">
               <div className="flex-1">
-                {editingId === project.id ? (
-                  <Input
-                    value={editName}
-                    onChange={(e) => setEditName(e.target.value)}
-                    className="mr-2"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') saveEdit();
-                      if (e.key === 'Escape') cancelEdit();
+                {(editingProject && editingProject.id === project.id) ? (
+                  <ProjectForm
+                    initialValues={{
+                      name: project.name ?? "",
+                      description: project.description ?? "",
+                      status: project.status ?? "active",
                     }}
+                    onSubmit={handleEditSubmit}
+                    isPending={updateMutation.isPending}
+                    submitLabel="Güncelle"
+                    onCancel={cancelEdit}
                   />
                 ) : (
                   <div>
@@ -118,33 +141,13 @@ export default function ManageProjectsModal({ open, onOpenChange }: ManageProjec
                   </div>
                 )}
               </div>
-              
               <div className="flex items-center space-x-2 ml-4">
                 <Badge variant="secondary">
                   {project.status === 'aktif' ? 'Aktif' : 
                    project.status === 'beklemede' ? 'Beklemede' : 
                    project.status === 'tamamlandi' ? 'Tamamlandı' : 'İptal'}
                 </Badge>
-                
-                {editingId === project.id ? (
-                  <div className="flex space-x-1">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={saveEdit}
-                      disabled={updateMutation.isPending}
-                    >
-                      <Save className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={cancelEdit}
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
-                  </div>
-                ) : (
+                {(editingProject && editingProject.id === project.id) ? null : (
                   <div className="flex space-x-1">
                     <Button
                       size="sm"

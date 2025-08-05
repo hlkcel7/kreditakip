@@ -1,33 +1,15 @@
-import mysql from "mysql";
+import { drizzle } from 'drizzle-orm/mysql2';
+import mysql from 'mysql2/promise';
 
-const connection = mysql.createConnection({
-  host: "127.0.0.1",
-  user: "root",
-  password: "gorken123",
-  database: "gorkem"
+const pool = mysql.createPool({
+  host: '127.0.0.1',
+  user: 'kreditakip',
+  password: 'kreditakip123',
+  database: 'kreditakip',
+  port: 3306,
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0,
 });
 
-connection.connect((err) => {
-  if (err) {
-    console.error("MySQL bağlantı hatası:", err);
-    process.exit(1);
-  }
-  console.log("MySQL bağlantısı başarılı!");
-});
-
-// Örnek sorgu: Tablo oluşturma
-const createProjectsTable = `CREATE TABLE IF NOT EXISTS projects (
-  id VARCHAR(36) PRIMARY KEY,
-  name TEXT NOT NULL,
-  description TEXT,
-  status TEXT NOT NULL DEFAULT 'active',
-  created_at DATETIME NOT NULL
-)`;
-
-connection.query(createProjectsTable, (err) => {
-  if (err) {
-    console.error("Tablo oluşturulamadı:", err);
-  } else {
-    console.log("projects tablosu hazır.");
-  }
-});
+export const db = drizzle(pool);

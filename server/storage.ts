@@ -22,6 +22,7 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, sql, desc, and } from "drizzle-orm";
+import { generateId } from "./utils";
 
 export interface IStorage {
   // Projects
@@ -80,16 +81,24 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createProject(insertProject: InsertProject): Promise<Project> {
-    const [project] = await db.insert(projects).values(insertProject).returning();
+    const id = generateId();
+    const createdAt = new Date();
+    await db.insert(projects).values({
+      id,
+      name: insertProject.name,
+      description: insertProject.description,
+      status: insertProject.status ?? "active",
+      createdAt,
+    });
+    const [project] = await db.select().from(projects).where(eq(projects.id, id));
     return project;
   }
 
   async updateProject(id: string, insertProject: Partial<InsertProject>): Promise<Project> {
-    const [project] = await db
-      .update(projects)
+    await db.update(projects)
       .set(insertProject)
-      .where(eq(projects.id, id))
-      .returning();
+      .where(eq(projects.id, id));
+    const [project] = await db.select().from(projects).where(eq(projects.id, id));
     return project;
   }
 
@@ -108,16 +117,29 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createBank(insertBank: InsertBank): Promise<Bank> {
-    const [bank] = await db.insert(banks).values(insertBank).returning();
+    const id = generateId();
+    const createdAt = new Date();
+    await db.insert(banks).values({
+      id,
+      name: insertBank.name,
+      code: insertBank.code,
+      branchName: insertBank.branchName,
+      contactPerson: insertBank.contactPerson,
+      phone: insertBank.phone,
+      email: insertBank.email,
+      address: insertBank.address,
+      status: insertBank.status ?? "active",
+      createdAt,
+    });
+    const [bank] = await db.select().from(banks).where(eq(banks.id, id));
     return bank;
   }
 
   async updateBank(id: string, insertBank: Partial<InsertBank>): Promise<Bank> {
-    const [bank] = await db
-      .update(banks)
+    await db.update(banks)
       .set(insertBank)
-      .where(eq(banks.id, id))
-      .returning();
+      .where(eq(banks.id, id));
+    const [bank] = await db.select().from(banks).where(eq(banks.id, id));
     return bank;
   }
 
@@ -136,16 +158,23 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createCurrency(insertCurrency: InsertCurrency): Promise<Currency> {
-    const [currency] = await db.insert(currencies).values(insertCurrency).returning();
+    const id = generateId();
+    await db.insert(currencies).values({
+      id,
+      code: insertCurrency.code,
+      name: insertCurrency.name,
+      symbol: insertCurrency.symbol,
+      isActive: insertCurrency.isActive ?? true,
+    });
+    const [currency] = await db.select().from(currencies).where(eq(currencies.id, id));
     return currency;
   }
 
   async updateCurrency(id: string, insertCurrency: Partial<InsertCurrency>): Promise<Currency> {
-    const [currency] = await db
-      .update(currencies)
+    await db.update(currencies)
       .set(insertCurrency)
-      .where(eq(currencies.id, id))
-      .returning();
+      .where(eq(currencies.id, id));
+    const [currency] = await db.select().from(currencies).where(eq(currencies.id, id));
     return currency;
   }
 
@@ -171,14 +200,23 @@ export class DatabaseStorage implements IStorage {
     const existing = await this.getExchangeRate(insertRate.fromCurrency, insertRate.toCurrency);
     
     if (existing) {
-      const [rate] = await db
+      await db
         .update(exchangeRates)
         .set({ rate: insertRate.rate, updatedAt: sql`now()` })
-        .where(eq(exchangeRates.id, existing.id))
-        .returning();
+        .where(eq(exchangeRates.id, existing.id));
+      const [rate] = await db.select().from(exchangeRates).where(eq(exchangeRates.id, existing.id));
       return rate;
     } else {
-      const [rate] = await db.insert(exchangeRates).values(insertRate).returning();
+      const id = generateId();
+      const updatedAt = new Date();
+      await db.insert(exchangeRates).values({
+        id,
+        fromCurrency: insertRate.fromCurrency,
+        toCurrency: insertRate.toCurrency,
+        rate: insertRate.rate,
+        updatedAt,
+      });
+      const [rate] = await db.select().from(exchangeRates).where(eq(exchangeRates.id, id));
       return rate;
     }
   }
@@ -245,16 +283,38 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createGuaranteeLetter(insertLetter: InsertGuaranteeLetter): Promise<GuaranteeLetter> {
-    const [letter] = await db.insert(guaranteeLetters).values(insertLetter).returning();
+    const id = generateId();
+    const createdAt = new Date();
+    const updatedAt = new Date();
+    await db.insert(guaranteeLetters).values({
+      id,
+      bankId: insertLetter.bankId,
+      projectId: insertLetter.projectId,
+      letterType: insertLetter.letterType,
+      contractAmount: insertLetter.contractAmount,
+      letterPercentage: insertLetter.letterPercentage,
+      letterAmount: insertLetter.letterAmount,
+      commissionRate: insertLetter.commissionRate,
+      bsmvAndOtherCosts: insertLetter.bsmvAndOtherCosts,
+      currency: insertLetter.currency,
+      purchaseDate: insertLetter.purchaseDate,
+      letterDate: insertLetter.letterDate,
+      expiryDate: insertLetter.expiryDate,
+      status: insertLetter.status ?? "aktif",
+      notes: insertLetter.notes,
+      createdAt,
+      updatedAt,
+    });
+    const [letter] = await db.select().from(guaranteeLetters).where(eq(guaranteeLetters.id, id));
     return letter;
   }
 
   async updateGuaranteeLetter(id: string, insertLetter: Partial<InsertGuaranteeLetter>): Promise<GuaranteeLetter> {
-    const [letter] = await db
+    await db
       .update(guaranteeLetters)
       .set({ ...insertLetter, updatedAt: sql`now()` })
-      .where(eq(guaranteeLetters.id, id))
-      .returning();
+      .where(eq(guaranteeLetters.id, id));
+    const [letter] = await db.select().from(guaranteeLetters).where(eq(guaranteeLetters.id, id));
     return letter;
   }
 
@@ -376,16 +436,34 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createCredit(insertCredit: InsertCredit): Promise<Credit> {
-    const [credit] = await db.insert(credits).values(insertCredit).returning();
+    const id = generateId();
+    const createdAt = new Date();
+    const updatedAt = new Date();
+    await db.insert(credits).values({
+      id,
+      bankId: insertCredit.bankId,
+      projectId: insertCredit.projectId,
+      currency: insertCredit.currency,
+      principalAmount: insertCredit.principalAmount,
+      interestAmount: insertCredit.interestAmount,
+      totalRepaidAmount: insertCredit.totalRepaidAmount,
+      creditDate: insertCredit.creditDate,
+      maturityDate: insertCredit.maturityDate,
+      status: insertCredit.status ?? "devam-ediyor",
+      notes: insertCredit.notes,
+      createdAt,
+      updatedAt,
+    });
+    const [credit] = await db.select().from(credits).where(eq(credits.id, id));
     return credit;
   }
 
   async updateCredit(id: string, insertCredit: Partial<InsertCredit>): Promise<Credit> {
-    const [credit] = await db
+    await db
       .update(credits)
       .set({ ...insertCredit, updatedAt: sql`now()` })
-      .where(eq(credits.id, id))
-      .returning();
+      .where(eq(credits.id, id));
+    const [credit] = await db.select().from(credits).where(eq(credits.id, id));
     return credit;
   }
 

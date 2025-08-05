@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { BankForm, BankFormData } from "./bank-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -15,9 +16,7 @@ interface ManageBanksModalProps {
 }
 
 export default function ManageBanksModal({ open, onOpenChange }: ManageBanksModalProps) {
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editName, setEditName] = useState("");
-  const [editBranch, setEditBranch] = useState("");
+  const [editingBank, setEditingBank] = useState<Bank | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -35,7 +34,7 @@ export default function ManageBanksModal({ open, onOpenChange }: ManageBanksModa
         title: "Başarılı",
         description: "Banka güncellendi.",
       });
-      setEditingId(null);
+      setEditingBank(null);
     },
     onError: () => {
       toast({
@@ -65,27 +64,28 @@ export default function ManageBanksModal({ open, onOpenChange }: ManageBanksModa
   });
 
   const startEdit = (bank: Bank) => {
-    setEditingId(bank.id);
-    setEditName(bank.name);
-    setEditBranch(bank.branchName || "");
+    setEditingBank(bank);
   };
 
-  const saveEdit = () => {
-    if (editingId && editName.trim()) {
+  const handleEditSubmit = (data: BankFormData) => {
+    if (editingBank) {
       updateMutation.mutate({
-        id: editingId,
-        data: { 
-          name: editName.trim(),
-          branchName: editBranch.trim() || null
+        id: editingBank.id,
+        data: {
+          name: data.name,
+          branchName: data.branchName,
+          contactPerson: data.contactPerson,
+          phone: data.phone,
+          email: data.email,
+          address: data.address,
+          status: data.status,
         }
       });
     }
   };
 
   const cancelEdit = () => {
-    setEditingId(null);
-    setEditName("");
-    setEditBranch("");
+    setEditingBank(null);
   };
 
   const deleteBank = (id: string) => {
@@ -105,39 +105,69 @@ export default function ManageBanksModal({ open, onOpenChange }: ManageBanksModa
           {Array.isArray(banks) && banks.map((bank) => (
             <div key={bank.id} className="flex items-center justify-between p-3 border rounded-lg">
               <div className="flex-1">
-                {editingId === bank.id ? (
-                  <div className="space-y-2">
-                    <Input
-                      value={editName}
-                      onChange={(e) => setEditName(e.target.value)}
-                      placeholder="Banka adı"
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') saveEdit();
-                        if (e.key === 'Escape') cancelEdit();
-                      }}
-                    />
-                    <Input
-                      value={editBranch}
-                      onChange={(e) => setEditBranch(e.target.value)}
-                      placeholder="Şube adı"
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') saveEdit();
-                        if (e.key === 'Escape') cancelEdit();
-                      }}
-                    />
-                  </div>
+                {editingBank && editingBank.id === bank.id ? (
+                  <BankForm
+                    initialValues={{
+                      name: bank.name ?? "",
+                      branchName: bank.branchName ?? "",
+                      contactPerson: bank.contactPerson ?? "",
+                      phone: bank.phone ?? "",
+                      email: bank.email ?? "",
+                      address: bank.address ?? "",
+                      status: bank.status ?? "aktif",
+                    }}
+                    onSubmit={handleEditSubmit}
+                    isPending={updateMutation.isPending}
+                    submitLabel="Güncelle"
+                    onCancel={cancelEdit}
+                  />
                 ) : (
-                  <div>
-                    <div className="font-medium">{bank.name}</div>
-                    <div className="text-sm text-gray-500">
-                      {bank.branchName || "Şube belirtilmemiş"}
-                    </div>
-                    {bank.contactPerson && (
-                      <div className="text-xs text-gray-400">
-                        İletişim: {bank.contactPerson}
+                  <>
+                    <div>
+                      <div className="font-medium">{bank.name}</div>
+                      <div className="text-sm text-gray-500">
+                        {bank.branchName || "Şube belirtilmemiş"}
                       </div>
-                    )}
-                  </div>
+                      {bank.contactPerson && (
+                        <div className="text-xs text-gray-400">
+                          İletişim: {bank.contactPerson}
+                        </div>
+                      )}
+                      {bank.phone && (
+                        <div className="text-xs text-gray-400">
+                          Telefon: {bank.phone}
+                        </div>
+                      )}
+                      {bank.email && (
+                        <div className="text-xs text-gray-400">
+                          E-posta: {bank.email}
+                        </div>
+                      )}
+                      {bank.address && (
+                        <div className="text-xs text-gray-400">
+                          Adres: {bank.address}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex space-x-1">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => startEdit(bank)}
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => deleteBank(bank.id)}
+                        disabled={deleteMutation.isPending}
+                        className="text-red-600 hover:text-red-700"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </>
                 )}
               </div>
               
@@ -146,44 +176,7 @@ export default function ManageBanksModal({ open, onOpenChange }: ManageBanksModa
                   {bank.status === 'aktif' ? 'Aktif' : 'Pasif'}
                 </Badge>
                 
-                {editingId === bank.id ? (
-                  <div className="flex space-x-1">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={saveEdit}
-                      disabled={updateMutation.isPending}
-                    >
-                      <Save className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={cancelEdit}
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="flex space-x-1">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => startEdit(bank)}
-                    >
-                      <Pencil className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => deleteBank(bank.id)}
-                      disabled={deleteMutation.isPending}
-                      className="text-red-600 hover:text-red-700"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                )}
+                {/* editingId tamamen kaldırıldı, sadece editingBank ile form açılıyor. */}
               </div>
             </div>
           ))}
