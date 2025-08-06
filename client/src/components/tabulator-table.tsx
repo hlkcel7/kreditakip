@@ -1,9 +1,25 @@
 import { useEffect, useRef } from "react";
-import { TabulatorFull as Tabulator } from "tabulator-tables";
+import { TabulatorFull as Tabulator, ColumnDefinition as TabulatorColumnDefinition } from "tabulator-tables";
+
+// Column definition types
+interface ColumnDefinition extends Omit<TabulatorColumnDefinition, 'editor' | 'editorParams'> {
+  editor?: Editor;
+  editorParams?: EditorParams;
+}
 import { useQuery } from "@tanstack/react-query";
 import type { GuaranteeLetterWithRelations, CreditWithRelations } from "@shared/schema";
 import { useCurrency } from "@/hooks/use-currency";
 import "tabulator-tables/dist/css/tabulator.min.css";
+
+type Editor = "input" | "textarea" | "number" | "range" | "select" | "star" | "progress" | "tickCross" | "checkbox" | "date";
+
+interface EditorParams {
+  min?: number;
+  max?: number;
+  step?: number;
+  values?: Record<string, string>;
+  verticalNavigation?: "editor" | "table";
+}
 
 interface TabulatorTableProps {
   selectedCurrency: string;
@@ -30,7 +46,7 @@ export default function TabulatorTable({ selectedCurrency, exchangeRates, isCred
       return amountInTRY * (exchangeRates[selectedCurrency] || 1);
     };
 
-    const guaranteeColumns = [
+    const guaranteeColumns: ColumnDefinition[] = [
       {
         title: "Banka",
         field: "bank.name",
@@ -48,6 +64,15 @@ export default function TabulatorTable({ selectedCurrency, exchangeRates, isCred
         title: "Mektup Türü",
         field: "letterType",
         width: 130,
+        editor: "select",
+        editorParams: {
+          values: {
+            'teminat': 'Teminat',
+            'avans': 'Avans Teminat',
+            'kesin-teminat': 'Kesin Teminat',
+            'gecici-teminat': 'Geçici Teminat'
+          }
+        },
         formatter: (cell: any) => {
           const value = cell.getValue();
           const typeMap: { [key: string]: string } = {
@@ -63,6 +88,11 @@ export default function TabulatorTable({ selectedCurrency, exchangeRates, isCred
         title: "Sözleşme Tutarı",
         field: "contractAmount",
         width: 130,
+        editor: "number",
+        editorParams: {
+          min: 0,
+          step: 0.01
+        },
         formatter: (cell: any) => {
           const value = parseFloat(cell.getValue() || '0');
           const currency = cell.getRow().getData().currency;
@@ -141,6 +171,15 @@ export default function TabulatorTable({ selectedCurrency, exchangeRates, isCred
         title: "Durum",
         field: "status",
         width: 100,
+        editor: "select",
+        editorParams: {
+          values: {
+            'aktif': 'Aktif',
+            'beklemede': 'Beklemede',
+            'kapali': 'Kapalı',
+            'iptal': 'İptal'
+          }
+        },
         formatter: (cell: any) => {
           const value = cell.getValue();
           const statusMap: { [key: string]: { text: string, class: string } } = {
@@ -157,6 +196,10 @@ export default function TabulatorTable({ selectedCurrency, exchangeRates, isCred
         title: "Notlar",
         field: "notes",
         width: 200,
+        editor: "textarea",
+        editorParams: {
+          verticalNavigation: "editor"
+        },
         formatter: (cell: any) => {
           const value = cell.getValue();
           return value ? (value.length > 50 ? value.substring(0, 50) + '...' : value) : '-';
@@ -164,7 +207,7 @@ export default function TabulatorTable({ selectedCurrency, exchangeRates, isCred
       }
     ];
 
-    const creditColumns = [
+    const creditColumns: ColumnDefinition[] = [
       {
         title: "Banka",
         field: "bank.name",
@@ -182,6 +225,11 @@ export default function TabulatorTable({ selectedCurrency, exchangeRates, isCred
         title: "Ana Para",
         field: "principalAmount",
         width: 130,
+        editor: "number",
+        editorParams: {
+          min: 0,
+          step: 0.01
+        },
         formatter: (cell: any) => {
           const value = parseFloat(cell.getValue() || '0');
           const currency = cell.getRow().getData().currency;
@@ -193,6 +241,11 @@ export default function TabulatorTable({ selectedCurrency, exchangeRates, isCred
         title: "Faiz Tutarı",
         field: "interestAmount",
         width: 130,
+        editor: "number",
+        editorParams: {
+          min: 0,
+          step: 0.01
+        },
         formatter: (cell: any) => {
           const value = parseFloat(cell.getValue() || '0');
           const currency = cell.getRow().getData().currency;
@@ -204,6 +257,11 @@ export default function TabulatorTable({ selectedCurrency, exchangeRates, isCred
         title: "Geri Ödenen",
         field: "totalRepaidAmount",
         width: 130,
+        editor: "number",
+        editorParams: {
+          min: 0,
+          step: 0.01
+        },
         formatter: (cell: any) => {
           const value = parseFloat(cell.getValue() || '0');
           const currency = cell.getRow().getData().currency;
@@ -238,6 +296,14 @@ export default function TabulatorTable({ selectedCurrency, exchangeRates, isCred
         title: "Durum",
         field: "status",
         width: 100,
+        editor: "select",
+        editorParams: {
+          values: {
+            'devam-ediyor': 'Devam Ediyor',
+            'kapali': 'Kapalı',
+            'iptal': 'İptal'
+          }
+        },
         formatter: (cell: any) => {
           const value = cell.getValue();
           const creditStatusMap: { [key: string]: { text: string, class: string } } = {
@@ -253,6 +319,10 @@ export default function TabulatorTable({ selectedCurrency, exchangeRates, isCred
         title: "Notlar",
         field: "notes",
         width: 200,
+        editor: "textarea",
+        editorParams: {
+          verticalNavigation: "editor"
+        },
         formatter: (cell: any) => {
           const value = cell.getValue();
           return value ? (value.length > 50 ? value.substring(0, 50) + '...' : value) : '-';
@@ -264,8 +334,50 @@ export default function TabulatorTable({ selectedCurrency, exchangeRates, isCred
       tabulatorRef.current.destroy();
     }
 
+    const onCellEdited = async (cell: any) => {
+      const row = cell.getRow();
+      const rowData = row.getData();
+      const field = cell.getField();
+      const value = cell.getValue();
+      const id = rowData.id;
+
+      try {
+        const endpoint = isCredits ? '/api/credits' : '/api/guarantee-letters';
+        const response = await fetch(`${endpoint}/${id}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ [field]: value }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Güncelleme başarısız');
+        }
+
+        // Başarılı güncelleme sonrası row'u yeşil yanıp sönerek göster
+        row.getElement().style.transition = 'background-color 1s';
+        row.getElement().style.backgroundColor = '#86efac';
+        setTimeout(() => {
+          row.getElement().style.backgroundColor = '';
+        }, 1000);
+
+      } catch (error) {
+        console.error('Güncelleme hatası:', error);
+        cell.restoreOldValue(); // Hata durumunda eski değere geri dön
+        
+        // Hata durumunda row'u kırmızı yanıp sönerek göster
+        row.getElement().style.transition = 'background-color 1s';
+        row.getElement().style.backgroundColor = '#fecaca';
+        setTimeout(() => {
+          row.getElement().style.backgroundColor = '';
+        }, 1000);
+      }
+    };
+
     tabulatorRef.current = new Tabulator(tableRef.current, {
       data: data,
+      // @ts-ignore - Tabulator types are incomplete
       columns: isCredits ? creditColumns : guaranteeColumns,
       layout: "fitDataStretch",
       responsiveLayout: "hide",
@@ -274,6 +386,8 @@ export default function TabulatorTable({ selectedCurrency, exchangeRates, isCred
       paginationSizeSelector: [10, 25, 50, 100],
       movableColumns: true,
       resizableRows: true,
+      // @ts-ignore - Tabulator types are incomplete
+      cellEdited: onCellEdited,
 
       printAsHtml: true,
       printStyled: true,
