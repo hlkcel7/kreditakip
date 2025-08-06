@@ -52,7 +52,7 @@ export const guaranteeLetters = mysqlTable("guarantee_letters", {
   bsmvAndOtherCosts: decimal("bsmv_and_other_costs", { precision: 15, scale: 2 }).default("0").notNull(),
   currency: text("currency").notNull(),
   purchaseDate: date("purchase_date").notNull(),
-  letterDate: date("letter_date").notNull(),
+
   expiryDate: date("expiry_date"),
   status: text("status").notNull().default("aktif"), // aktif, beklemede, kapali, iptal
   notes: text("notes"),

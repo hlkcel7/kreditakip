@@ -1,9 +1,3 @@
-var __defProp = Object.defineProperty;
-var __export = (target, all) => {
-  for (var name in all)
-    __defProp(target, name, { get: all[name], enumerable: true });
-};
-
 // server/index.ts
 import express2 from "express";
 
@@ -11,62 +5,47 @@ import express2 from "express";
 import { createServer } from "http";
 
 // shared/schema.ts
-var schema_exports = {};
-__export(schema_exports, {
-  banks: () => banks,
-  banksRelations: () => banksRelations,
-  credits: () => credits,
-  creditsRelations: () => creditsRelations,
-  currencies: () => currencies,
-  exchangeRates: () => exchangeRates,
-  guaranteeLetters: () => guaranteeLetters,
-  guaranteeLettersRelations: () => guaranteeLettersRelations,
-  insertBankSchema: () => insertBankSchema,
-  insertCreditSchema: () => insertCreditSchema,
-  insertCurrencySchema: () => insertCurrencySchema,
-  insertExchangeRateSchema: () => insertExchangeRateSchema,
-  insertGuaranteeLetterSchema: () => insertGuaranteeLetterSchema,
-  insertProjectSchema: () => insertProjectSchema,
-  projects: () => projects,
-  projectsRelations: () => projectsRelations
-});
-import { sql } from "drizzle-orm";
-import { pgTable, text, decimal, date, timestamp, uuid, boolean } from "drizzle-orm/pg-core";
+import { mysqlTable, varchar, text, decimal, date, datetime, boolean, timestamp } from "drizzle-orm/mysql-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
-var projects = pgTable("projects", {
-  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+import { z } from "zod";
+var projects = mysqlTable("projects", {
+  id: varchar("id", { length: 36 }).primaryKey().notNull(),
   name: text("name").notNull(),
   description: text("description"),
   status: text("status").notNull().default("active"),
-  createdAt: timestamp("created_at").defaultNow().notNull()
+  createdAt: datetime("created_at").notNull()
 });
-var banks = pgTable("banks", {
-  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+var banks = mysqlTable("banks", {
+  id: varchar("id", { length: 36 }).primaryKey().notNull(),
   name: text("name").notNull(),
   code: text("code"),
-  contactInfo: text("contact_info"),
+  branchName: text("branch_name"),
+  contactPerson: text("contact_person"),
+  phone: text("phone"),
+  email: text("email"),
+  address: text("address"),
   status: text("status").notNull().default("active"),
-  createdAt: timestamp("created_at").defaultNow().notNull()
+  createdAt: datetime("created_at").notNull()
 });
-var currencies = pgTable("currencies", {
-  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+var currencies = mysqlTable("currencies", {
+  id: varchar("id", { length: 36 }).primaryKey().notNull(),
   code: text("code").notNull().unique(),
   name: text("name").notNull(),
   symbol: text("symbol"),
   isActive: boolean("is_active").default(true)
 });
-var exchangeRates = pgTable("exchange_rates", {
-  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+var exchangeRates = mysqlTable("exchange_rates", {
+  id: varchar("id", { length: 36 }).primaryKey().notNull(),
   fromCurrency: text("from_currency").notNull(),
   toCurrency: text("to_currency").notNull(),
   rate: decimal("rate", { precision: 12, scale: 6 }).notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull()
+  updatedAt: datetime("updated_at").notNull()
 });
-var guaranteeLetters = pgTable("guarantee_letters", {
-  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-  bankId: uuid("bank_id").notNull().references(() => banks.id),
-  projectId: uuid("project_id").notNull().references(() => projects.id),
+var guaranteeLetters = mysqlTable("guarantee_letters", {
+  id: varchar("id", { length: 36 }).primaryKey().notNull(),
+  bankId: varchar("bank_id", { length: 36 }).notNull().references(() => banks.id),
+  projectId: varchar("project_id", { length: 36 }).notNull().references(() => projects.id),
   letterType: text("letter_type").notNull(),
   // teminat, avans, kesin-teminat, gecici-teminat
   contractAmount: decimal("contract_amount", { precision: 15, scale: 2 }).notNull(),
@@ -84,10 +63,10 @@ var guaranteeLetters = pgTable("guarantee_letters", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull()
 });
-var credits = pgTable("credits", {
-  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-  bankId: uuid("bank_id").notNull().references(() => banks.id),
-  projectId: uuid("project_id").notNull().references(() => projects.id),
+var credits = mysqlTable("credits", {
+  id: varchar("id", { length: 36 }).primaryKey().notNull(),
+  bankId: varchar("bank_id", { length: 36 }).notNull().references(() => banks.id),
+  projectId: varchar("project_id", { length: 36 }).notNull().references(() => projects.id),
   principalAmount: decimal("principal_amount", { precision: 15, scale: 2 }).notNull(),
   interestAmount: decimal("interest_amount", { precision: 15, scale: 2 }).notNull(),
   totalRepaidAmount: decimal("total_repaid_amount", { precision: 15, scale: 2 }).default("0").notNull(),
@@ -152,23 +131,36 @@ var insertCreditSchema = createInsertSchema(credits).omit({
   id: true,
   createdAt: true,
   updatedAt: true
+}).extend({
+  creditDate: z.coerce.date(),
+  maturityDate: z.coerce.date()
 });
 
 // server/db.ts
-import { Pool, neonConfig } from "@neondatabase/serverless";
-import { drizzle } from "drizzle-orm/neon-serverless";
-import ws from "ws";
-neonConfig.webSocketConstructor = ws;
-if (!process.env.DATABASE_URL) {
-  throw new Error(
-    "DATABASE_URL must be set. Did you forget to provision a database?"
-  );
-}
-var pool = new Pool({ connectionString: process.env.DATABASE_URL });
-var db = drizzle({ client: pool, schema: schema_exports });
+import { drizzle } from "drizzle-orm/mysql2";
+import mysql from "mysql2/promise";
+var pool = mysql.createPool({
+  host: "127.0.0.1",
+  user: "kreditakip",
+  password: "kreditakip123",
+  database: "kreditakip",
+  port: 3306,
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0
+});
+var db = drizzle(pool);
 
 // server/storage.ts
-import { eq, sql as sql2, desc, and } from "drizzle-orm";
+import { eq, sql, desc, and } from "drizzle-orm";
+
+// server/utils.ts
+import { randomUUID } from "crypto";
+function generateId() {
+  return randomUUID();
+}
+
+// server/storage.ts
 var DatabaseStorage = class {
   // Projects
   async getProjects() {
@@ -179,11 +171,21 @@ var DatabaseStorage = class {
     return project || void 0;
   }
   async createProject(insertProject) {
-    const [project] = await db.insert(projects).values(insertProject).returning();
+    const id = generateId();
+    const createdAt = /* @__PURE__ */ new Date();
+    await db.insert(projects).values({
+      id,
+      name: insertProject.name,
+      description: insertProject.description,
+      status: insertProject.status ?? "active",
+      createdAt
+    });
+    const [project] = await db.select().from(projects).where(eq(projects.id, id));
     return project;
   }
   async updateProject(id, insertProject) {
-    const [project] = await db.update(projects).set(insertProject).where(eq(projects.id, id)).returning();
+    await db.update(projects).set(insertProject).where(eq(projects.id, id));
+    const [project] = await db.select().from(projects).where(eq(projects.id, id));
     return project;
   }
   async deleteProject(id) {
@@ -198,11 +200,26 @@ var DatabaseStorage = class {
     return bank || void 0;
   }
   async createBank(insertBank) {
-    const [bank] = await db.insert(banks).values(insertBank).returning();
+    const id = generateId();
+    const createdAt = /* @__PURE__ */ new Date();
+    await db.insert(banks).values({
+      id,
+      name: insertBank.name,
+      code: insertBank.code,
+      branchName: insertBank.branchName,
+      contactPerson: insertBank.contactPerson,
+      phone: insertBank.phone,
+      email: insertBank.email,
+      address: insertBank.address,
+      status: insertBank.status ?? "active",
+      createdAt
+    });
+    const [bank] = await db.select().from(banks).where(eq(banks.id, id));
     return bank;
   }
   async updateBank(id, insertBank) {
-    const [bank] = await db.update(banks).set(insertBank).where(eq(banks.id, id)).returning();
+    await db.update(banks).set(insertBank).where(eq(banks.id, id));
+    const [bank] = await db.select().from(banks).where(eq(banks.id, id));
     return bank;
   }
   async deleteBank(id) {
@@ -217,11 +234,20 @@ var DatabaseStorage = class {
     return currency || void 0;
   }
   async createCurrency(insertCurrency) {
-    const [currency] = await db.insert(currencies).values(insertCurrency).returning();
+    const id = generateId();
+    await db.insert(currencies).values({
+      id,
+      code: insertCurrency.code,
+      name: insertCurrency.name,
+      symbol: insertCurrency.symbol,
+      isActive: insertCurrency.isActive ?? true
+    });
+    const [currency] = await db.select().from(currencies).where(eq(currencies.id, id));
     return currency;
   }
   async updateCurrency(id, insertCurrency) {
-    const [currency] = await db.update(currencies).set(insertCurrency).where(eq(currencies.id, id)).returning();
+    await db.update(currencies).set(insertCurrency).where(eq(currencies.id, id));
+    const [currency] = await db.select().from(currencies).where(eq(currencies.id, id));
     return currency;
   }
   // Exchange Rates
@@ -240,10 +266,20 @@ var DatabaseStorage = class {
   async createOrUpdateExchangeRate(insertRate) {
     const existing = await this.getExchangeRate(insertRate.fromCurrency, insertRate.toCurrency);
     if (existing) {
-      const [rate] = await db.update(exchangeRates).set({ rate: insertRate.rate, updatedAt: sql2`now()` }).where(eq(exchangeRates.id, existing.id)).returning();
+      await db.update(exchangeRates).set({ rate: insertRate.rate, updatedAt: sql`now()` }).where(eq(exchangeRates.id, existing.id));
+      const [rate] = await db.select().from(exchangeRates).where(eq(exchangeRates.id, existing.id));
       return rate;
     } else {
-      const [rate] = await db.insert(exchangeRates).values(insertRate).returning();
+      const id = generateId();
+      const updatedAt = /* @__PURE__ */ new Date();
+      await db.insert(exchangeRates).values({
+        id,
+        fromCurrency: insertRate.fromCurrency,
+        toCurrency: insertRate.toCurrency,
+        rate: insertRate.rate,
+        updatedAt
+      });
+      const [rate] = await db.select().from(exchangeRates).where(eq(exchangeRates.id, id));
       return rate;
     }
   }
@@ -296,11 +332,34 @@ var DatabaseStorage = class {
     return letter || void 0;
   }
   async createGuaranteeLetter(insertLetter) {
-    const [letter] = await db.insert(guaranteeLetters).values(insertLetter).returning();
+    const id = generateId();
+    const createdAt = /* @__PURE__ */ new Date();
+    const updatedAt = /* @__PURE__ */ new Date();
+    await db.insert(guaranteeLetters).values({
+      id,
+      bankId: insertLetter.bankId,
+      projectId: insertLetter.projectId,
+      letterType: insertLetter.letterType,
+      contractAmount: insertLetter.contractAmount,
+      letterPercentage: insertLetter.letterPercentage,
+      letterAmount: insertLetter.letterAmount,
+      commissionRate: insertLetter.commissionRate,
+      bsmvAndOtherCosts: insertLetter.bsmvAndOtherCosts,
+      currency: insertLetter.currency,
+      purchaseDate: insertLetter.purchaseDate,
+      letterDate: insertLetter.letterDate,
+      expiryDate: insertLetter.expiryDate,
+      status: insertLetter.status ?? "aktif",
+      notes: insertLetter.notes,
+      createdAt,
+      updatedAt
+    });
+    const [letter] = await db.select().from(guaranteeLetters).where(eq(guaranteeLetters.id, id));
     return letter;
   }
   async updateGuaranteeLetter(id, insertLetter) {
-    const [letter] = await db.update(guaranteeLetters).set({ ...insertLetter, updatedAt: sql2`now()` }).where(eq(guaranteeLetters.id, id)).returning();
+    await db.update(guaranteeLetters).set({ ...insertLetter, updatedAt: sql`now()` }).where(eq(guaranteeLetters.id, id));
+    const [letter] = await db.select().from(guaranteeLetters).where(eq(guaranteeLetters.id, id));
     return letter;
   }
   async deleteGuaranteeLetter(id) {
@@ -393,11 +452,30 @@ var DatabaseStorage = class {
     return credit || void 0;
   }
   async createCredit(insertCredit) {
-    const [credit] = await db.insert(credits).values(insertCredit).returning();
+    const id = generateId();
+    const createdAt = /* @__PURE__ */ new Date();
+    const updatedAt = /* @__PURE__ */ new Date();
+    await db.insert(credits).values({
+      id,
+      bankId: insertCredit.bankId,
+      projectId: insertCredit.projectId,
+      currency: insertCredit.currency,
+      principalAmount: insertCredit.principalAmount,
+      interestAmount: insertCredit.interestAmount,
+      totalRepaidAmount: insertCredit.totalRepaidAmount,
+      creditDate: insertCredit.creditDate,
+      maturityDate: insertCredit.maturityDate,
+      status: insertCredit.status ?? "devam-ediyor",
+      notes: insertCredit.notes,
+      createdAt,
+      updatedAt
+    });
+    const [credit] = await db.select().from(credits).where(eq(credits.id, id));
     return credit;
   }
   async updateCredit(id, insertCredit) {
-    const [credit] = await db.update(credits).set({ ...insertCredit, updatedAt: sql2`now()` }).where(eq(credits.id, id)).returning();
+    await db.update(credits).set({ ...insertCredit, updatedAt: sql`now()` }).where(eq(credits.id, id));
+    const [credit] = await db.select().from(credits).where(eq(credits.id, id));
     return credit;
   }
   async deleteCredit(id) {
@@ -445,7 +523,7 @@ var DatabaseStorage = class {
 var storage = new DatabaseStorage();
 
 // server/routes.ts
-import { z } from "zod";
+import { z as z2 } from "zod";
 async function registerRoutes(app2) {
   app2.get("/api/projects", async (req, res) => {
     try {
@@ -472,7 +550,7 @@ async function registerRoutes(app2) {
       const project = await storage.createProject(data);
       res.status(201).json(project);
     } catch (error) {
-      if (error instanceof z.ZodError) {
+      if (error instanceof z2.ZodError) {
         return res.status(400).json({ message: "Invalid data", errors: error.errors });
       }
       res.status(500).json({ message: "Failed to create project" });
@@ -484,7 +562,7 @@ async function registerRoutes(app2) {
       const project = await storage.updateProject(req.params.id, data);
       res.json(project);
     } catch (error) {
-      if (error instanceof z.ZodError) {
+      if (error instanceof z2.ZodError) {
         return res.status(400).json({ message: "Invalid data", errors: error.errors });
       }
       res.status(500).json({ message: "Failed to update project" });
@@ -504,7 +582,7 @@ async function registerRoutes(app2) {
       const project = await storage.updateProject(req.params.id, data);
       res.json(project);
     } catch (error) {
-      if (error instanceof z.ZodError) {
+      if (error instanceof z2.ZodError) {
         return res.status(400).json({ message: "Invalid data", errors: error.errors });
       }
       res.status(500).json({ message: "Failed to update project" });
@@ -543,7 +621,7 @@ async function registerRoutes(app2) {
       const bank = await storage.createBank(data);
       res.status(201).json(bank);
     } catch (error) {
-      if (error instanceof z.ZodError) {
+      if (error instanceof z2.ZodError) {
         return res.status(400).json({ message: "Invalid data", errors: error.errors });
       }
       res.status(500).json({ message: "Failed to create bank" });
@@ -555,7 +633,7 @@ async function registerRoutes(app2) {
       const bank = await storage.updateBank(req.params.id, data);
       res.json(bank);
     } catch (error) {
-      if (error instanceof z.ZodError) {
+      if (error instanceof z2.ZodError) {
         return res.status(400).json({ message: "Invalid data", errors: error.errors });
       }
       res.status(500).json({ message: "Failed to update bank" });
@@ -575,7 +653,7 @@ async function registerRoutes(app2) {
       const bank = await storage.updateBank(req.params.id, data);
       res.json(bank);
     } catch (error) {
-      if (error instanceof z.ZodError) {
+      if (error instanceof z2.ZodError) {
         return res.status(400).json({ message: "Invalid data", errors: error.errors });
       }
       res.status(500).json({ message: "Failed to update bank" });
@@ -603,7 +681,7 @@ async function registerRoutes(app2) {
       const currency = await storage.createCurrency(data);
       res.status(201).json(currency);
     } catch (error) {
-      if (error instanceof z.ZodError) {
+      if (error instanceof z2.ZodError) {
         return res.status(400).json({ message: "Invalid data", errors: error.errors });
       }
       res.status(500).json({ message: "Failed to create currency" });
@@ -623,7 +701,7 @@ async function registerRoutes(app2) {
       const rate = await storage.createOrUpdateExchangeRate(data);
       res.json(rate);
     } catch (error) {
-      if (error instanceof z.ZodError) {
+      if (error instanceof z2.ZodError) {
         return res.status(400).json({ message: "Invalid data", errors: error.errors });
       }
       res.status(500).json({ message: "Failed to save exchange rate" });
@@ -662,7 +740,7 @@ async function registerRoutes(app2) {
       const letter = await storage.createGuaranteeLetter(data);
       res.status(201).json(letter);
     } catch (error) {
-      if (error instanceof z.ZodError) {
+      if (error instanceof z2.ZodError) {
         return res.status(400).json({ message: "Invalid data", errors: error.errors });
       }
       res.status(500).json({ message: "Failed to create guarantee letter" });
@@ -674,7 +752,7 @@ async function registerRoutes(app2) {
       const letter = await storage.updateGuaranteeLetter(req.params.id, data);
       res.json(letter);
     } catch (error) {
-      if (error instanceof z.ZodError) {
+      if (error instanceof z2.ZodError) {
         return res.status(400).json({ message: "Invalid data", errors: error.errors });
       }
       res.status(500).json({ message: "Failed to update guarantee letter" });
@@ -721,7 +799,7 @@ async function registerRoutes(app2) {
       const credit = await storage.createCredit(data);
       res.status(201).json(credit);
     } catch (error) {
-      if (error instanceof z.ZodError) {
+      if (error instanceof z2.ZodError) {
         return res.status(400).json({ message: "Invalid data", errors: error.errors });
       }
       res.status(500).json({ message: "Failed to create credit" });
@@ -733,7 +811,7 @@ async function registerRoutes(app2) {
       const credit = await storage.updateCredit(req.params.id, data);
       res.json(credit);
     } catch (error) {
-      if (error instanceof z.ZodError) {
+      if (error instanceof z2.ZodError) {
         return res.status(400).json({ message: "Invalid data", errors: error.errors });
       }
       res.status(500).json({ message: "Failed to update credit" });
@@ -846,6 +924,9 @@ var vite_config_default = defineConfig({
     fs: {
       strict: true,
       deny: ["**/.*"]
+    },
+    proxy: {
+      "/api": "http://localhost:5000"
     }
   }
 });

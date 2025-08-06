@@ -37,12 +37,16 @@ export default function AddBankModal({ open, onOpenChange }: AddBankModalProps) 
 
   const mutation = useMutation({
     mutationFn: (data: BankFormData) => {
-      // Backend ile uyumlu veri oluştur
       const submitData = {
         name: data.name,
-        code: data.code ?? "", // Eğer formda yoksa boş string
-        contactInfo: `${data.branchName ?? ""} ${data.contactPerson ?? ""} ${data.phone ?? ""} ${data.email ?? ""} ${data.address ?? ""}`.trim(),
+        code: data.code ?? "",
+        branchName: data.branchName,
+        contactPerson: data.contactPerson,
+        phone: data.phone,
+        email: data.email,
+        address: data.address,
         status: data.status,
+        createdAt: new Date()
       };
       return apiRequest('POST', '/api/banks', submitData);
     },

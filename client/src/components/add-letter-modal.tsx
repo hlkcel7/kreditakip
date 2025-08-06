@@ -13,11 +13,15 @@ import { insertGuaranteeLetterSchema } from "@shared/schema";
 import { z } from "zod";
 
 const formSchema = insertGuaranteeLetterSchema.extend({
-  contractAmount: z.string().transform(val => val.toString()),
-  letterPercentage: z.string().transform(val => val.toString()),
-  letterAmount: z.string().transform(val => val.toString()),
-  commissionRate: z.string().transform(val => val.toString()),
-  bsmvAndOtherCosts: z.string().transform(val => val.toString()),
+  contractAmount: z.string().min(1, "Sözleşme tutarı gerekli").transform(val => val.toString()),
+  letterPercentage: z.string().min(1, "Mektup yüzdesi gerekli").transform(val => val.toString()),
+  letterAmount: z.string().min(1, "Mektup tutarı gerekli").transform(val => val.toString()),
+  commissionRate: z.string().min(1, "Komisyon oranı gerekli").transform(val => val.toString()),
+  bsmvAndOtherCosts: z.string().default("0").transform(val => val.toString()),
+  purchaseDate: z.string().min(1, "Mektup alım tarihi gerekli"),
+  expiryDate: z.string().nullable(),
+  bankId: z.string().min(1, "Banka seçimi gerekli"),
+  projectId: z.string().min(1, "Proje seçimi gerekli"),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -51,7 +55,6 @@ export default function AddLetterModal({ open, onOpenChange }: AddLetterModalPro
       bsmvAndOtherCosts: "0",
       currency: "TRY",
       purchaseDate: "",
-      letterDate: "",
       status: "aktif",
       notes: "",
     },
@@ -70,6 +73,9 @@ export default function AddLetterModal({ open, onOpenChange }: AddLetterModalPro
         letterPercentage: data.letterPercentage,
         letterAmount: data.letterAmount || calculatedAmount.toString(),
         commissionRate: data.commissionRate,
+        purchaseDate: new Date(data.purchaseDate).toISOString(),
+        expiryDate: data.expiryDate ? new Date(data.expiryDate).toISOString() : null,
+        createdAt: new Date().toISOString()
       });
       return response.json();
     },
@@ -305,26 +311,14 @@ export default function AddLetterModal({ open, onOpenChange }: AddLetterModalPro
                   <FormItem>
                     <FormLabel>Mektup Alım Tarihi</FormLabel>
                     <FormControl>
-                      <Input type="date" {...field} />
+                      <Input type="date" {...field} value={field.value || ''} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="letterDate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Mektup Tarihi</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+
 
               <FormField
                 control={form.control}
@@ -333,7 +327,7 @@ export default function AddLetterModal({ open, onOpenChange }: AddLetterModalPro
                   <FormItem>
                     <FormLabel>Son Geçerlilik Tarihi</FormLabel>
                     <FormControl>
-                      <Input type="date" {...field} />
+                      <Input type="date" {...field} value={field.value || ''} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -372,7 +366,7 @@ export default function AddLetterModal({ open, onOpenChange }: AddLetterModalPro
                 <FormItem>
                   <FormLabel>Notlar</FormLabel>
                   <FormControl>
-                    <Textarea placeholder="Ek notlar..." {...field} />
+                    <Textarea placeholder="Ek notlar..." {...field} value={field.value || ''} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
