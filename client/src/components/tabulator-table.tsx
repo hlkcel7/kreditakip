@@ -17,7 +17,7 @@ export default function TabulatorTable({ selectedCurrency, exchangeRates, isCred
   const { formatCurrency } = useCurrency();
 
   // Fetch data based on table type
-  const { data } = useQuery({
+  const { data } = useQuery<GuaranteeLetterWithRelations[] | CreditWithRelations[]>({
     queryKey: [isCredits ? '/api/credits' : '/api/guarantee-letters'],
   });
 
@@ -125,15 +125,7 @@ export default function TabulatorTable({ selectedCurrency, exchangeRates, isCred
           return date.toLocaleDateString('tr-TR');
         }
       },
-      {
-        title: "Mektup Tarihi",
-        field: "letterDate",
-        width: 110,
-        formatter: (cell: any) => {
-          const date = new Date(cell.getValue());
-          return date.toLocaleDateString('tr-TR');
-        }
-      },
+
       {
         title: "Son Tarih",
         field: "expiryDate",
@@ -277,12 +269,12 @@ export default function TabulatorTable({ selectedCurrency, exchangeRates, isCred
       columns: isCredits ? creditColumns : guaranteeColumns,
       layout: "fitDataStretch",
       responsiveLayout: "hide",
-      pagination: "local",
+      pagination: true,
       paginationSize: 25,
       paginationSizeSelector: [10, 25, 50, 100],
       movableColumns: true,
       resizableRows: true,
-      tooltips: true,
+
       printAsHtml: true,
       printStyled: true,
       downloadConfig: {
