@@ -44,17 +44,16 @@ export const guaranteeLetters = mysqlTable("guarantee_letters", {
   id: varchar("id", { length: 36 }).primaryKey().notNull(),
   bankId: varchar("bank_id", { length: 36 }).notNull().references(() => banks.id),
   projectId: varchar("project_id", { length: 36 }).notNull().references(() => projects.id),
-  letterType: text("letter_type").notNull(), // teminat, avans, kesin-teminat, gecici-teminat
+  letterType: varchar("letter_type", { length: 50 }).notNull(), // teminat, avans, kesin-teminat, gecici-teminat
   contractAmount: decimal("contract_amount", { precision: 15, scale: 2 }).notNull(),
   letterPercentage: decimal("letter_percentage", { precision: 5, scale: 2 }).notNull(),
   letterAmount: decimal("letter_amount", { precision: 15, scale: 2 }).notNull(),
   commissionRate: decimal("commission_rate", { precision: 5, scale: 2 }).notNull(),
   bsmvAndOtherCosts: decimal("bsmv_and_other_costs", { precision: 15, scale: 2 }).default("0").notNull(),
-  currency: text("currency").notNull(),
+  currency: varchar("currency", { length: 3 }).notNull(),
   purchaseDate: date("purchase_date").notNull(),
-
   expiryDate: date("expiry_date"),
-  status: text("status").notNull().default("aktif"), // aktif, beklemede, kapali, iptal
+  status: varchar("status", { length: 20 }).notNull().default("aktif"), // aktif, beklemede, kapali, iptal
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -129,7 +128,21 @@ export const insertExchangeRateSchema = createInsertSchema(exchangeRates).omit({
   updatedAt: true,
 });
 
-export const insertGuaranteeLetterSchema = createInsertSchema(guaranteeLetters).omit({
+export const insertGuaranteeLetterSchema = createInsertSchema(guaranteeLetters).extend({
+  bankId: z.string().min(1, "Banka seçimi gerekli"),
+  projectId: z.string().min(1, "Proje seçimi gerekli"),
+  letterType: z.string().min(1, "Mektup türü seçimi gerekli"),
+  contractAmount: z.coerce.number().min(0, "Sözleşme tutarı 0'dan büyük olmalı"),
+  letterPercentage: z.coerce.number().min(0, "Yüzde 0'dan büyük olmalı"),
+  letterAmount: z.coerce.number().min(0, "Mektup tutarı 0'dan büyük olmalı"),
+  commissionRate: z.coerce.number().min(0, "Komisyon oranı 0'dan büyük olmalı"),
+  bsmvAndOtherCosts: z.coerce.number().min(0),
+  currency: z.string().min(3).max(3, "Para birimi 3 karakter olmalı"),
+  purchaseDate: z.coerce.date(),
+  expiryDate: z.coerce.date().nullable(),
+  status: z.string().default("aktif"),
+  notes: z.string().nullable().default(""),
+}).omit({
   id: true,
   createdAt: true,
   updatedAt: true,

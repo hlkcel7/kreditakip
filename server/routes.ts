@@ -47,6 +47,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Guarantee Letters routes
+  app.get("/api/guarantee-letters", async (req, res) => {
+    try {
+      const letters = await storage.getGuaranteeLetters();
+      res.json(letters);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch guarantee letters" });
+    }
+  });
+
   app.patch("/api/projects/:id", async (req, res) => {
     try {
       const data = insertProjectSchema.partial().parse(req.body);

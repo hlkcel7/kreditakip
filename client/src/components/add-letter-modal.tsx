@@ -12,16 +12,40 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { insertGuaranteeLetterSchema } from "@shared/schema";
 import { z } from "zod";
 
-const formSchema = insertGuaranteeLetterSchema.extend({
-  contractAmount: z.string().min(1, "Sözleşme tutarı gerekli").transform(val => val.toString()),
-  letterPercentage: z.string().min(1, "Mektup yüzdesi gerekli").transform(val => val.toString()),
-  letterAmount: z.string().min(1, "Mektup tutarı gerekli").transform(val => val.toString()),
-  commissionRate: z.string().min(1, "Komisyon oranı gerekli").transform(val => val.toString()),
-  bsmvAndOtherCosts: z.string().default("0").transform(val => val.toString()),
-  purchaseDate: z.string().min(1, "Mektup alım tarihi gerekli"),
-  expiryDate: z.string().nullable(),
+const formSchema = z.object({
+  // Sayısal alanlar
+  contractAmount: z.string()
+    .min(1, "Sözleşme tutarı gerekli")
+    .transform((val) => Number(parseFloat(val).toFixed(2))),
+  letterPercentage: z.string()
+    .min(1, "Mektup yüzdesi gerekli")
+    .transform((val) => Number(parseFloat(val).toFixed(2))),
+  letterAmount: z.string()
+    .min(1, "Mektup tutarı gerekli")
+    .transform((val) => Number(parseFloat(val).toFixed(2))),
+  commissionRate: z.string()
+    .min(1, "Komisyon oranı gerekli")
+    .transform((val) => Number(parseFloat(val).toFixed(2))),
+  bsmvAndOtherCosts: z.string()
+    .default("0")
+    .transform((val) => Number(parseFloat(val || "0").toFixed(2))),
+  
+  // Tarih alanları
+  purchaseDate: z.date({
+    required_error: "Mektup alım tarihi gerekli",
+    invalid_type_error: "Geçerli bir tarih giriniz",
+  }),
+  expiryDate: z.date({
+    invalid_type_error: "Geçerli bir tarih giriniz",
+  }).nullable(),
+  
+  // String alanlar
   bankId: z.string().min(1, "Banka seçimi gerekli"),
   projectId: z.string().min(1, "Proje seçimi gerekli"),
+  status: z.string().min(1, "Durum seçimi gerekli"),
+  letterType: z.string().min(1, "Mektup türü seçimi gerekli"),
+  currency: z.string().min(1, "Para birimi seçimi gerekli"),
+  notes: z.string().nullable(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -30,6 +54,27 @@ interface AddLetterModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
+
+type FieldType = {
+  // Sayısal alanlar (form'da string olarak tutulacak)
+  contractAmount: string;
+  letterPercentage: string;
+  letterAmount: string;
+  commissionRate: string;
+  bsmvAndOtherCosts: string;
+  
+  // Tarih alanları
+  purchaseDate: Date;
+  expiryDate: Date | null;
+  
+  // String alanlar
+  bankId: string;
+  projectId: string;
+  status: string;
+  letterType: string;
+  currency: string;
+  notes: string;
+};
 
 export default function AddLetterModal({ open, onOpenChange }: AddLetterModalProps) {
   const { toast } = useToast();
@@ -44,39 +89,45 @@ export default function AddLetterModal({ open, onOpenChange }: AddLetterModalPro
     enabled: open,
   });
 
-  const form = useForm<FormData>({
+  const form = useForm<FieldType>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      // String alanlar
       letterType: "",
-      contractAmount: "",
-      letterPercentage: "",
-      letterAmount: "",
-      commissionRate: "",
-      bsmvAndOtherCosts: "0",
       currency: "TRY",
-      purchaseDate: "",
       status: "aktif",
+      projectId: "",
+      bankId: "",
       notes: "",
+      
+      // Sayısal alanlar (string olarak)
+      contractAmount: "0",
+      letterPercentage: "0",
+      letterAmount: "0",
+      commissionRate: "0",
+      bsmvAndOtherCosts: "0",
+      
+      // Tarih alanları
+      purchaseDate: new Date(),
+      expiryDate: null,
     },
   });
 
   const createLetterMutation = useMutation({
-    mutationFn: async (data: FormData) => {
-      // Calculate letter amount if not provided
-      const contractAmount = parseFloat(data.contractAmount);
-      const percentage = parseFloat(data.letterPercentage);
-      const calculatedAmount = (contractAmount * percentage) / 100;
-      
-      const response = await apiRequest('POST', '/api/guarantee-letters', {
+    mutationFn: async (data: FieldType) => {
+      // Form verilerini API'ye göndermeden önce sayısal değerlere dönüştür
+      const submitData = {
         ...data,
-        contractAmount: data.contractAmount,
-        letterPercentage: data.letterPercentage,
-        letterAmount: data.letterAmount || calculatedAmount.toString(),
-        commissionRate: data.commissionRate,
-        purchaseDate: new Date(data.purchaseDate).toISOString(),
-        expiryDate: data.expiryDate ? new Date(data.expiryDate).toISOString() : null,
-        createdAt: new Date().toISOString()
-      });
+        contractAmount: Number(parseFloat(data.contractAmount || "0").toFixed(2)),
+        letterPercentage: Number(parseFloat(data.letterPercentage || "0").toFixed(2)),
+        letterAmount: Number(parseFloat(data.letterAmount || "0").toFixed(2)),
+        commissionRate: Number(parseFloat(data.commissionRate || "0").toFixed(2)),
+        bsmvAndOtherCosts: Number(parseFloat(data.bsmvAndOtherCosts || "0").toFixed(2)),
+        purchaseDate: data.purchaseDate,
+        expiryDate: data.expiryDate
+      };
+      
+      const response = await apiRequest('POST', '/api/guarantee-letters', submitData);
       return response.json();
     },
     onSuccess: () => {
@@ -98,7 +149,7 @@ export default function AddLetterModal({ open, onOpenChange }: AddLetterModalPro
     },
   });
 
-  const onSubmit = (data: FormData) => {
+  const onSubmit = (data: FieldType) => {
     createLetterMutation.mutate(data);
   };
 
@@ -311,7 +362,13 @@ export default function AddLetterModal({ open, onOpenChange }: AddLetterModalPro
                   <FormItem>
                     <FormLabel>Mektup Alım Tarihi</FormLabel>
                     <FormControl>
-                      <Input type="date" {...field} value={field.value || ''} />
+                      <Input 
+                        type="date"
+                        value={field.value instanceof Date ? field.value.toISOString().split('T')[0] : ''}
+                        onChange={(e) => {
+                          field.onChange(e.target.value ? new Date(e.target.value) : null);
+                        }}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -327,7 +384,13 @@ export default function AddLetterModal({ open, onOpenChange }: AddLetterModalPro
                   <FormItem>
                     <FormLabel>Son Geçerlilik Tarihi</FormLabel>
                     <FormControl>
-                      <Input type="date" {...field} value={field.value || ''} />
+                      <Input 
+                        type="date"
+                        value={field.value instanceof Date ? field.value.toISOString().split('T')[0] : ''}
+                        onChange={(e) => {
+                          field.onChange(e.target.value ? new Date(e.target.value) : null);
+                        }}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

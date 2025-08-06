@@ -1,23 +1,28 @@
 import { useEffect, useRef } from "react";
 import { TabulatorFull as Tabulator } from "tabulator-tables";
+import { useQuery } from "@tanstack/react-query";
 import type { GuaranteeLetterWithRelations, CreditWithRelations } from "@shared/schema";
 import { useCurrency } from "@/hooks/use-currency";
 import "tabulator-tables/dist/css/tabulator.min.css";
 
 interface TabulatorTableProps {
-  data: GuaranteeLetterWithRelations[] | CreditWithRelations[];
   selectedCurrency: string;
   exchangeRates: Record<string, number>;
   isCredits?: boolean;
 }
 
-export default function TabulatorTable({ data, selectedCurrency, exchangeRates, isCredits = false }: TabulatorTableProps) {
+export default function TabulatorTable({ selectedCurrency, exchangeRates, isCredits = false }: TabulatorTableProps) {
   const tableRef = useRef<HTMLDivElement>(null);
   const tabulatorRef = useRef<Tabulator | null>(null);
   const { formatCurrency } = useCurrency();
 
+  // Fetch data based on table type
+  const { data } = useQuery({
+    queryKey: [isCredits ? '/api/credits' : '/api/guarantee-letters'],
+  });
+
   useEffect(() => {
-    if (!tableRef.current) return;
+    if (!tableRef.current || !data) return;
 
     const convertCurrency = (amount: number, fromCurrency: string) => {
       if (fromCurrency === selectedCurrency) return amount;
