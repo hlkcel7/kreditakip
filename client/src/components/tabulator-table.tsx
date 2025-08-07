@@ -1,15 +1,15 @@
-import { useEffect, useRef } from "react";
+import React, { useEffect, useRef } from "react";
 import { TabulatorFull as Tabulator, ColumnDefinition as TabulatorColumnDefinition } from "tabulator-tables";
+import { useQuery } from "@tanstack/react-query";
+import type { GuaranteeLetterWithRelations, CreditWithRelations } from "@shared/schema";
+import { useCurrency } from "@/hooks/use-currency";
+import "tabulator-tables/dist/css/tabulator.min.css";
 
 // Column definition types
 interface ColumnDefinition extends Omit<TabulatorColumnDefinition, 'editor' | 'editorParams'> {
   editor?: Editor;
   editorParams?: EditorParams;
 }
-import { useQuery } from "@tanstack/react-query";
-import type { GuaranteeLetterWithRelations, CreditWithRelations } from "@shared/schema";
-import { useCurrency } from "@/hooks/use-currency";
-import "tabulator-tables/dist/css/tabulator.min.css";
 
 type Editor = "input" | "textarea" | "number" | "range" | "select" | "star" | "progress" | "tickCross" | "checkbox" | "date";
 
@@ -41,9 +41,7 @@ export default function TabulatorTable({ selectedCurrency, exchangeRates, isCred
     if (!tableRef.current || !data) return;
 
     const convertCurrency = (amount: number, fromCurrency: string) => {
-      if (fromCurrency === selectedCurrency) return amount;
-      const amountInTRY = amount / (exchangeRates[fromCurrency] || 1);
-      return amountInTRY * (exchangeRates[selectedCurrency] || 1);
+      return amount; // Para birimini çevirme, olduğu gibi bırak
     };
 
     const guaranteeColumns: ColumnDefinition[] = [
@@ -96,8 +94,7 @@ export default function TabulatorTable({ selectedCurrency, exchangeRates, isCred
         formatter: (cell: any) => {
           const value = parseFloat(cell.getValue() || '0');
           const currency = cell.getRow().getData().currency;
-          const convertedAmount = convertCurrency(value, currency);
-          return formatCurrency(convertedAmount, selectedCurrency);
+          return formatCurrency(value, currency);
         }
       },
       {
@@ -113,8 +110,7 @@ export default function TabulatorTable({ selectedCurrency, exchangeRates, isCred
         formatter: (cell: any) => {
           const value = parseFloat(cell.getValue() || '0');
           const currency = cell.getRow().getData().currency;
-          const convertedAmount = convertCurrency(value, currency);
-          return formatCurrency(convertedAmount, selectedCurrency);
+          return formatCurrency(value, currency);
         }
       },
       {
@@ -137,8 +133,7 @@ export default function TabulatorTable({ selectedCurrency, exchangeRates, isCred
           const totalCommission = commissionAmount + bsmvAndOtherCosts;
           
           const currency = rowData.currency;
-          const convertedAmount = convertCurrency(totalCommission, currency);
-          return formatCurrency(convertedAmount, selectedCurrency);
+          return formatCurrency(totalCommission, currency);
         }
       },
       {
@@ -233,8 +228,7 @@ export default function TabulatorTable({ selectedCurrency, exchangeRates, isCred
         formatter: (cell: any) => {
           const value = parseFloat(cell.getValue() || '0');
           const currency = cell.getRow().getData().currency;
-          const convertedAmount = convertCurrency(value, currency);
-          return formatCurrency(convertedAmount, selectedCurrency);
+          return formatCurrency(value, currency);
         }
       },
       {
@@ -265,8 +259,7 @@ export default function TabulatorTable({ selectedCurrency, exchangeRates, isCred
         formatter: (cell: any) => {
           const value = parseFloat(cell.getValue() || '0');
           const currency = cell.getRow().getData().currency;
-          const convertedAmount = convertCurrency(value, currency);
-          return formatCurrency(convertedAmount, selectedCurrency);
+          return formatCurrency(value, currency);
         }
       },
       {
