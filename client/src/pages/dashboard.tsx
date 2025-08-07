@@ -251,53 +251,46 @@ export default function Dashboard() {
               </TabsContent>
 
               <TabsContent value="payments">
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  <div className="lg:col-span-2">
-                    <Card>
-                      <CardContent className="p-6">
-                        <h3 className="text-lg font-semibold text-gray-800 mb-4">Ödeme Takvimi</h3>
-                        <div className="h-96 border border-gray-200 rounded-lg flex items-center justify-center">
-                          <div className="text-center text-gray-500">
-                            <Calendar className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-                            <p>Takvim görünümü yakında eklenecek</p>
-                          </div>
+                <Card>
+                  <CardContent className="p-6">
+                    <Tabs defaultValue="letter-commissions" className="w-full">
+                      <TabsList className="grid w-full grid-cols-4">
+                        <TabsTrigger value="letter-commissions">Mektup Komisyonları</TabsTrigger>
+                        <TabsTrigger value="credit-payments">Kredi Ödemeleri</TabsTrigger>
+                        <TabsTrigger value="other-payments">Diğer Ödemeler</TabsTrigger>
+                        <TabsTrigger value="total-payments">Toplam Ödemeler</TabsTrigger>
+                      </TabsList>
+
+                      <TabsContent value="letter-commissions" className="mt-4">
+                        <div className="rounded-lg border p-4">
+                          <h3 className="text-lg font-semibold mb-4">Mektup Komisyonları</h3>
+                          {/* Mektup Komisyonları tablosu buraya gelecek */}
                         </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-                  
-                  <div className="space-y-6">
-                    <Card>
-                      <CardContent className="p-6">
-                        <h3 className="text-lg font-semibold text-gray-800 mb-4">Yaklaşan Ödemeler</h3>
-                        <div className="space-y-3">
-                          {(Array.isArray(letters) ? letters : []).filter(letter => {
-                            if (!letter?.expiryDate) return false;
-                            const expiryDate = new Date(letter.expiryDate ?? '');
-                            const today = new Date();
-                            const thirtyDaysFromNow = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000);
-                            return expiryDate >= today && expiryDate <= thirtyDaysFromNow;
-                          }).map(payment => (
-                            <div key={payment?.id ?? Math.random()} className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                              <div className="flex items-center justify-between">
-                                <span className="text-sm font-medium text-gray-900">{payment?.bank?.name ?? "Banka Yok"}</span>
-                                <Badge variant="outline" className="text-yellow-700 bg-yellow-100">
-                                  {payment?.expiryDate ? 
-                                    Math.ceil((new Date(payment.expiryDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : 0
-                                  } gün
-                                </Badge>
-                              </div>
-                              <p className="text-xs text-gray-600 mt-1">{payment?.project?.name ?? "Proje Yok"}</p>
-                              <p className="text-sm font-semibold text-gray-900 mt-1">
-                                {formatCurrency(parseFloat(payment?.letterAmount ?? '0'))}
-                              </p>
-                            </div>
-                          ))}
+                      </TabsContent>
+
+                      <TabsContent value="credit-payments" className="mt-4">
+                        <div className="rounded-lg border p-4">
+                          <h3 className="text-lg font-semibold mb-4">Kredi Ödemeleri</h3>
+                          {/* Kredi Ödemeleri tablosu buraya gelecek */}
                         </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-                </div>
+                      </TabsContent>
+
+                      <TabsContent value="other-payments" className="mt-4">
+                        <div className="rounded-lg border p-4">
+                          <h3 className="text-lg font-semibold mb-4">Diğer Ödemeler</h3>
+                          {/* Diğer Ödemeler tablosu buraya gelecek */}
+                        </div>
+                      </TabsContent>
+
+                      <TabsContent value="total-payments" className="mt-4">
+                        <div className="rounded-lg border p-4">
+                          <h3 className="text-lg font-semibold mb-4">Toplam Ödemeler</h3>
+                          {/* Toplam Ödemeler tablosu buraya gelecek */}
+                        </div>
+                      </TabsContent>
+                    </Tabs>
+                  </CardContent>
+                </Card>
               </TabsContent>
 
               <TabsContent value="reports">
