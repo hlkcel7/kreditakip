@@ -1,10 +1,17 @@
-import { useState, useContext, createContext } from "react";
+import { useState, useContext, createContext, useEffect, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 interface Currency {
   code: string;
   name: string;
   symbol?: string;
+}
+
+interface ExchangeRate {
+  id: string;
+  fromCurrency: string;
+  toCurrency: string;
+  rate: string;
 }
 
 interface CurrencyContextType {
@@ -26,10 +33,26 @@ const defaultCurrencies: Currency[] = [
 ];
 
 export function CurrencyProvider({ children }: { children: React.ReactNode }) {
-  const [selectedCurrency, setSelectedCurrency] = useState('TRY');
+  const [selectedCurrency, setSelectedCurrency] = useState(() => {
+    // Local storage'dan kayıtlı para birimini al, yoksa TRY kullan
+    const saved = localStorage.getItem('selectedCurrency');
+    return saved || 'TRY';
+  });
 
-  const { data: exchangeRates } = useQuery({
+  const handleCurrencyChange = useCallback((currency: string) => {
+    console.log('Currency changing to:', currency); // Debug log
+    setSelectedCurrency(currency);
+    localStorage.setItem('selectedCurrency', currency);
+  }, []);
+
+  // Debug için para birimi değişimini izle
+  useEffect(() => {
+    console.log('Selected currency is now:', selectedCurrency);
+  }, [selectedCurrency]);
+
+  const { data: exchangeRates } = useQuery<ExchangeRate[]>({
     queryKey: ['/api/exchange-rates'],
+    initialData: [],
   });
 
   const formatCurrency = (amount: number, currency?: string) => {
@@ -72,7 +95,7 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
   return (
     <CurrencyContext.Provider value={{
       selectedCurrency,
-      setSelectedCurrency,
+      setSelectedCurrency: handleCurrencyChange,
       currencies: defaultCurrencies,
       formatCurrency,
       convertCurrency,

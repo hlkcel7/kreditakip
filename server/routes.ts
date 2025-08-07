@@ -377,24 +377,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Statistics routes
   app.get("/api/dashboard-stats", async (req, res) => {
     try {
+      const targetCurrency = req.query.currency as string || 'TRY';
       const letters = await storage.getGuaranteeLetters();
       const credits = await storage.getCredits();
       const projects = await storage.getProjects();
       const banks = await storage.getBanks();
+      const exchangeRates = await storage.getExchangeRates();
 
       const totalLetters = letters.length;
       const activeLetters = letters.filter(l => l.status === 'aktif').length;
+      // Para birimi dönüşüm fonksiyonu
+      const convertAmount = (amount: number, fromCurrency: string, toCurrency: string): number => {
+        if (fromCurrency === toCurrency) return amount;
+        
+        const rate = exchangeRates.find(r => 
+          (r.fromCurrency === fromCurrency && r.toCurrency === toCurrency) ||
+          (r.fromCurrency === toCurrency && r.toCurrency === fromCurrency)
+        );
+        
+        if (!rate) return amount; // Kur bulunamazsa orijinal değeri döndür
+        
+        if (rate.fromCurrency === fromCurrency) {
+          return amount * parseFloat(rate.rate.toString());
+        } else {
+          return amount / parseFloat(rate.rate.toString());
+        }
+      };
+
       const totalLetterAmount = letters.reduce((sum, letter) => {
-        return sum + parseFloat(letter.letterAmount || '0');
+        const amount = parseFloat(letter.letterAmount || '0');
+        return sum + convertAmount(amount, letter.currency, targetCurrency);
       }, 0);
 
       const totalCredits = credits.length;
       const activeCredits = credits.filter(c => c.status === 'devam-ediyor').length;
       const totalCreditAmount = credits.reduce((sum, credit) => {
-        return sum + parseFloat(credit.principalAmount || '0') + parseFloat(credit.interestAmount || '0');
+        const amount = parseFloat(credit.principalAmount || '0') + parseFloat(credit.interestAmount || '0');
+        return sum + convertAmount(amount, credit.currency, targetCurrency);
       }, 0);
       const totalRepaidAmount = credits.reduce((sum, credit) => {
-        return sum + parseFloat(credit.totalRepaidAmount || '0');
+        const amount = parseFloat(credit.totalRepaidAmount || '0');
+        return sum + convertAmount(amount, credit.currency, targetCurrency);
       }, 0);
 
       // Get upcoming payments (letters expiring in next 30 days)
@@ -438,6 +461,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         overdueCreditPayments,
         totalProjects: projects.length,
         totalBanks: banks.length,
+        currency: targetCurrency
       });
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch dashboard statistics" });

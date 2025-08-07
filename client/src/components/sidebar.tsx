@@ -69,9 +69,15 @@ export default function Sidebar({
           Kur Çevirici
         </h3>
         <div className="space-y-2">
-          <Select value={selectedCurrency} onValueChange={setSelectedCurrency}>
+          <Select 
+            value={selectedCurrency} 
+            onValueChange={(value) => {
+              console.log('Sidebar selecting currency:', value); // Debug log
+              setSelectedCurrency(value);
+            }}
+          >
             <SelectTrigger className="w-full">
-              <SelectValue />
+              <SelectValue placeholder={`${selectedCurrency} - ${currencies.find(c => c.code === selectedCurrency)?.name}`} />
             </SelectTrigger>
             <SelectContent>
               {currencies.map(currency => (

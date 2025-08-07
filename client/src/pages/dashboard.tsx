@@ -45,7 +45,12 @@ export default function Dashboard() {
   };
 
   const { data: stats, isLoading: statsLoading } = useQuery({
-    queryKey: ['/api/dashboard-stats'],
+    queryKey: ['/api/dashboard-stats', selectedCurrency],
+    queryFn: async () => {
+      const response = await fetch(`/api/dashboard-stats?currency=${selectedCurrency}`);
+      if (!response.ok) throw new Error('Network response was not ok');
+      return response.json();
+    }
   });
 
   const { data: letters = [], isLoading: lettersLoading } = useQuery<GuaranteeLetterWithRelations[]>({
