@@ -65,6 +65,7 @@ export const credits = mysqlTable("credits", {
   projectId: varchar("project_id", { length: 36 }).notNull().references(() => projects.id),
   principalAmount: decimal("principal_amount", { precision: 15, scale: 2 }).notNull(),
   interestAmount: decimal("interest_amount", { precision: 15, scale: 2 }).notNull(),
+  bsmvAndOtherCosts: decimal("bsmv_and_other_costs", { precision: 15, scale: 2 }).default("0").notNull(),
   totalRepaidAmount: decimal("total_repaid_amount", { precision: 15, scale: 2 }).default("0").notNull(),
   currency: text("currency").notNull(),
   creditDate: date("credit_date").notNull(),

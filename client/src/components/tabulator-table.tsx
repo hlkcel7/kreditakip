@@ -232,7 +232,7 @@ export default function TabulatorTable({ selectedCurrency, exchangeRates, isCred
         }
       },
       {
-        title: "Faiz Tutarı",
+        title: "Faiz Oranı (%)",
         field: "interestAmount",
         width: 130,
         editor: "number",
@@ -242,9 +242,22 @@ export default function TabulatorTable({ selectedCurrency, exchangeRates, isCred
         },
         formatter: (cell: any) => {
           const value = parseFloat(cell.getValue() || '0');
+          return value.toFixed(2);
+        }
+      },
+      {
+        title: "BSMV ve Diğer Masraflar",
+        field: "bsmvAndOtherCosts",
+        width: 130,
+        editor: "number",
+        editorParams: {
+          min: 0,
+          step: 0.01
+        },
+        formatter: (cell: any) => {
+          const value = parseFloat(cell.getValue() || '0');
           const currency = cell.getRow().getData().currency;
-          const convertedAmount = convertCurrency(value, currency);
-          return formatCurrency(convertedAmount, selectedCurrency);
+          return formatCurrency(value, currency);
         }
       },
       {

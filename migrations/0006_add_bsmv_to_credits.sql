@@ -1,0 +1,2 @@
+ALTER TABLE credits
+ADD COLUMN bsmv_and_other_costs DECIMAL(15, 2) NOT NULL DEFAULT 0;
