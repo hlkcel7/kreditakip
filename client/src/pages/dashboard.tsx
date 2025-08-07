@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Sidebar from "@/components/sidebar";
 import TabulatorTable from "@/components/tabulator-table";
+import type { GuaranteeLetterWithRelations, CreditWithRelations } from "@shared/schema";
 import Charts from "@/components/charts";
 import CurrencyConverterModal from "@/components/currency-converter-modal";
 import AddLetterModal from "@/components/add-letter-modal";
@@ -47,11 +48,11 @@ export default function Dashboard() {
     queryKey: ['/api/dashboard-stats'],
   });
 
-  const { data: letters, isLoading: lettersLoading } = useQuery({
+  const { data: letters = [], isLoading: lettersLoading } = useQuery<GuaranteeLetterWithRelations[]>({
     queryKey: ['/api/guarantee-letters'],
   });
 
-  const { data: credits, isLoading: creditsLoading } = useQuery({
+  const { data: credits = [], isLoading: creditsLoading } = useQuery<CreditWithRelations[]>({
     queryKey: ['/api/credits'],
   });
 
@@ -221,7 +222,7 @@ export default function Dashboard() {
                       </Button>
                     </div>
                     <TabulatorTable 
-                      data={Array.isArray(letters) ? letters : []} 
+                      data={letters} 
                       selectedCurrency={selectedCurrency}
                       exchangeRates={exchangeRates}
                     />
@@ -241,7 +242,7 @@ export default function Dashboard() {
                     </div>
 
                     <TabulatorTable 
-                      data={Array.isArray(credits) ? credits : []} 
+                      data={credits} 
                       selectedCurrency={selectedCurrency}
                       exchangeRates={exchangeRates}
                       isCredits={true}
@@ -311,7 +312,7 @@ export default function Dashboard() {
                     </CardContent>
                   </Card>
                   
-                  <Charts letters={Array.isArray(letters) ? letters : []} />
+                  <Charts letters={letters} />
                 </div>
               </TabsContent>
             </div>

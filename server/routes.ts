@@ -57,6 +57,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/guarantee-letters", async (req, res) => {
+    try {
+      const data = insertGuaranteeLetterSchema.parse(req.body);
+      const letter = await storage.createGuaranteeLetter(data);
+      res.status(201).json(letter);
+    } catch (error) {
+      console.error('Error creating guarantee letter:', error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create guarantee letter" });
+    }
+  });
+
   app.patch("/api/projects/:id", async (req, res) => {
     try {
       const data = insertProjectSchema.partial().parse(req.body);

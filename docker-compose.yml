@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  db:
+    image: mariadb:latest
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: kreditakip
+      MYSQL_USER: kreditakip
+      MYSQL_PASSWORD: kreditakip123
+    ports:
+      - "3306:3306"
+    volumes:
+      - kreditakip_data:/var/lib/mysql
+      - ./docker/db/init:/docker-entrypoint-initdb.d
+
+volumes:
+  kreditakip_data:
+    name: kreditakip_data

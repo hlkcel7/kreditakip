@@ -22,20 +22,16 @@ interface EditorParams {
 }
 
 interface TabulatorTableProps {
+  data: GuaranteeLetterWithRelations[] | CreditWithRelations[];
   selectedCurrency: string;
   exchangeRates: Record<string, number>;
   isCredits?: boolean;
 }
 
-export default function TabulatorTable({ selectedCurrency, exchangeRates, isCredits = false }: TabulatorTableProps) {
+export default function TabulatorTable({ data, selectedCurrency, exchangeRates, isCredits = false }: TabulatorTableProps) {
   const tableRef = useRef<HTMLDivElement>(null);
   const tabulatorRef = useRef<Tabulator | null>(null);
   const { formatCurrency } = useCurrency();
-
-  // Fetch data based on table type
-  const { data } = useQuery<GuaranteeLetterWithRelations[] | CreditWithRelations[]>({
-    queryKey: [isCredits ? '/api/credits' : '/api/guarantee-letters'],
-  });
 
   useEffect(() => {
     if (!tableRef.current || !data) return;
