@@ -260,6 +260,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get total commission and costs
+  app.get("/api/guarantee-letters/total-commission", async (req, res) => {
+    try {
+      const letters = await storage.getGuaranteeLetters();
+      
+      const commissionsByCurrency = letters.reduce((acc: any, letter) => {
+        const currency = letter.currency;
+        if (!acc[currency]) {
+          acc[currency] = {
+            currency,
+            totalCommission: 0,
+            totalBsmvAndOtherCosts: 0
+          };
+        }
+        
+        // Komisyon = Mektup tutarı * Komisyon oranı / 100
+        const letterAmount = Number(letter.letterAmount);
+        const commissionRate = Number(letter.commissionRate);
+        const bsmvAndOtherCosts = Number(letter.bsmvAndOtherCosts || 0);
+        
+        const commission = (letterAmount * commissionRate) / 100;
+        
+        acc[currency].totalCommission += commission;
+        acc[currency].totalBsmvAndOtherCosts += bsmvAndOtherCosts;
+        
+        return acc;
+      }, {});
+      
+      const result = Object.values(commissionsByCurrency);
+      console.log('Calculated commissions:', result);
+      
+      res.json(result);
+    } catch (error) {
+      console.error('Error calculating total commission:', error);
+      res.status(500).json({ message: "Failed to calculate total commission and costs" });
+    }
+  });
+
   app.get("/api/guarantee-letters/:id", async (req, res) => {
     try {
       const letter = await storage.getGuaranteeLetter(req.params.id);

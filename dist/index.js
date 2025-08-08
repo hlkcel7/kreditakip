@@ -1,3 +1,9 @@
+var __defProp = Object.defineProperty;
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+
 // server/index.ts
 import express2 from "express";
 
@@ -5,6 +11,25 @@ import express2 from "express";
 import { createServer } from "http";
 
 // shared/schema.ts
+var schema_exports = {};
+__export(schema_exports, {
+  banks: () => banks,
+  banksRelations: () => banksRelations,
+  credits: () => credits,
+  creditsRelations: () => creditsRelations,
+  currencies: () => currencies,
+  exchangeRates: () => exchangeRates,
+  guaranteeLetters: () => guaranteeLetters,
+  guaranteeLettersRelations: () => guaranteeLettersRelations,
+  insertBankSchema: () => insertBankSchema,
+  insertCreditSchema: () => insertCreditSchema,
+  insertCurrencySchema: () => insertCurrencySchema,
+  insertExchangeRateSchema: () => insertExchangeRateSchema,
+  insertGuaranteeLetterSchema: () => insertGuaranteeLetterSchema,
+  insertProjectSchema: () => insertProjectSchema,
+  projects: () => projects,
+  projectsRelations: () => projectsRelations
+});
 import { mysqlTable, varchar, text, decimal, date, datetime, boolean, timestamp } from "drizzle-orm/mysql-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
@@ -46,18 +71,17 @@ var guaranteeLetters = mysqlTable("guarantee_letters", {
   id: varchar("id", { length: 36 }).primaryKey().notNull(),
   bankId: varchar("bank_id", { length: 36 }).notNull().references(() => banks.id),
   projectId: varchar("project_id", { length: 36 }).notNull().references(() => projects.id),
-  letterType: text("letter_type").notNull(),
+  letterType: varchar("letter_type", { length: 50 }).notNull(),
   // teminat, avans, kesin-teminat, gecici-teminat
   contractAmount: decimal("contract_amount", { precision: 15, scale: 2 }).notNull(),
   letterPercentage: decimal("letter_percentage", { precision: 5, scale: 2 }).notNull(),
   letterAmount: decimal("letter_amount", { precision: 15, scale: 2 }).notNull(),
   commissionRate: decimal("commission_rate", { precision: 5, scale: 2 }).notNull(),
   bsmvAndOtherCosts: decimal("bsmv_and_other_costs", { precision: 15, scale: 2 }).default("0").notNull(),
-  currency: text("currency").notNull(),
+  currency: varchar("currency", { length: 3 }).notNull(),
   purchaseDate: date("purchase_date").notNull(),
-  letterDate: date("letter_date").notNull(),
   expiryDate: date("expiry_date"),
-  status: text("status").notNull().default("aktif"),
+  status: varchar("status", { length: 20 }).notNull().default("aktif"),
   // aktif, beklemede, kapali, iptal
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -69,6 +93,7 @@ var credits = mysqlTable("credits", {
   projectId: varchar("project_id", { length: 36 }).notNull().references(() => projects.id),
   principalAmount: decimal("principal_amount", { precision: 15, scale: 2 }).notNull(),
   interestAmount: decimal("interest_amount", { precision: 15, scale: 2 }).notNull(),
+  bsmvAndOtherCosts: decimal("bsmv_and_other_costs", { precision: 15, scale: 2 }).default("0").notNull(),
   totalRepaidAmount: decimal("total_repaid_amount", { precision: 15, scale: 2 }).default("0").notNull(),
   currency: text("currency").notNull(),
   creditDate: date("credit_date").notNull(),
@@ -122,7 +147,21 @@ var insertExchangeRateSchema = createInsertSchema(exchangeRates).omit({
   id: true,
   updatedAt: true
 });
-var insertGuaranteeLetterSchema = createInsertSchema(guaranteeLetters).omit({
+var insertGuaranteeLetterSchema = createInsertSchema(guaranteeLetters).extend({
+  bankId: z.string().min(1, "Banka se\xE7imi gerekli"),
+  projectId: z.string().min(1, "Proje se\xE7imi gerekli"),
+  letterType: z.string().min(1, "Mektup t\xFCr\xFC se\xE7imi gerekli"),
+  contractAmount: z.coerce.number().min(0, "S\xF6zle\u015Fme tutar\u0131 0'dan b\xFCy\xFCk olmal\u0131"),
+  letterPercentage: z.coerce.number().min(0, "Y\xFCzde 0'dan b\xFCy\xFCk olmal\u0131"),
+  letterAmount: z.coerce.number().min(0, "Mektup tutar\u0131 0'dan b\xFCy\xFCk olmal\u0131"),
+  commissionRate: z.coerce.number().min(0, "Komisyon oran\u0131 0'dan b\xFCy\xFCk olmal\u0131"),
+  bsmvAndOtherCosts: z.coerce.number().min(0),
+  currency: z.string().min(3).max(3, "Para birimi 3 karakter olmal\u0131"),
+  purchaseDate: z.coerce.date(),
+  expiryDate: z.coerce.date().nullable(),
+  status: z.string().default("aktif"),
+  notes: z.string().nullable().default("")
+}).omit({
   id: true,
   createdAt: true,
   updatedAt: true
@@ -149,10 +188,10 @@ var pool = mysql.createPool({
   connectionLimit: 10,
   queueLimit: 0
 });
-var db = drizzle(pool);
+var db = drizzle(pool, { schema: schema_exports, mode: "default" });
 
 // server/storage.ts
-import { eq, sql, desc, and } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 
 // server/utils.ts
 import { randomUUID } from "crypto";
@@ -164,27 +203,30 @@ function generateId() {
 var DatabaseStorage = class {
   // Projects
   async getProjects() {
-    return await db.select().from(projects).orderBy(desc(projects.createdAt));
+    return await db.query.projects.findMany({
+      orderBy: [desc(projects.createdAt)]
+    });
   }
   async getProject(id) {
-    const [project] = await db.select().from(projects).where(eq(projects.id, id));
-    return project || void 0;
+    return await db.query.projects.findFirst({
+      where: eq(projects.id, id)
+    });
   }
   async createProject(insertProject) {
     const id = generateId();
-    const createdAt = /* @__PURE__ */ new Date();
     await db.insert(projects).values({
       id,
-      name: insertProject.name,
-      description: insertProject.description,
+      ...insertProject,
       status: insertProject.status ?? "active",
-      createdAt
+      createdAt: /* @__PURE__ */ new Date()
     });
     const [project] = await db.select().from(projects).where(eq(projects.id, id));
     return project;
   }
   async updateProject(id, insertProject) {
-    await db.update(projects).set(insertProject).where(eq(projects.id, id));
+    await db.update(projects).set({
+      ...insertProject
+    }).where(eq(projects.id, id));
     const [project] = await db.select().from(projects).where(eq(projects.id, id));
     return project;
   }
@@ -193,32 +235,30 @@ var DatabaseStorage = class {
   }
   // Banks
   async getBanks() {
-    return await db.select().from(banks).orderBy(desc(banks.createdAt));
+    return await db.query.banks.findMany({
+      orderBy: [desc(banks.createdAt)]
+    });
   }
   async getBank(id) {
-    const [bank] = await db.select().from(banks).where(eq(banks.id, id));
-    return bank || void 0;
+    return await db.query.banks.findFirst({
+      where: eq(banks.id, id)
+    });
   }
   async createBank(insertBank) {
     const id = generateId();
-    const createdAt = /* @__PURE__ */ new Date();
     await db.insert(banks).values({
       id,
-      name: insertBank.name,
-      code: insertBank.code,
-      branchName: insertBank.branchName,
-      contactPerson: insertBank.contactPerson,
-      phone: insertBank.phone,
-      email: insertBank.email,
-      address: insertBank.address,
+      ...insertBank,
       status: insertBank.status ?? "active",
-      createdAt
+      createdAt: /* @__PURE__ */ new Date()
     });
     const [bank] = await db.select().from(banks).where(eq(banks.id, id));
     return bank;
   }
   async updateBank(id, insertBank) {
-    await db.update(banks).set(insertBank).where(eq(banks.id, id));
+    await db.update(banks).set({
+      ...insertBank
+    }).where(eq(banks.id, id));
     const [bank] = await db.select().from(banks).where(eq(banks.id, id));
     return bank;
   }
@@ -227,19 +267,20 @@ var DatabaseStorage = class {
   }
   // Currencies
   async getCurrencies() {
-    return await db.select().from(currencies).where(eq(currencies.isActive, true));
+    return await db.query.currencies.findMany({
+      where: eq(currencies.isActive, true)
+    });
   }
   async getCurrency(id) {
-    const [currency] = await db.select().from(currencies).where(eq(currencies.id, id));
-    return currency || void 0;
+    return await db.query.currencies.findFirst({
+      where: eq(currencies.id, id)
+    });
   }
   async createCurrency(insertCurrency) {
     const id = generateId();
     await db.insert(currencies).values({
       id,
-      code: insertCurrency.code,
-      name: insertCurrency.name,
-      symbol: insertCurrency.symbol,
+      ...insertCurrency,
       isActive: insertCurrency.isActive ?? true
     });
     const [currency] = await db.select().from(currencies).where(eq(currencies.id, id));
@@ -266,18 +307,18 @@ var DatabaseStorage = class {
   async createOrUpdateExchangeRate(insertRate) {
     const existing = await this.getExchangeRate(insertRate.fromCurrency, insertRate.toCurrency);
     if (existing) {
-      await db.update(exchangeRates).set({ rate: insertRate.rate, updatedAt: sql`now()` }).where(eq(exchangeRates.id, existing.id));
+      await db.update(exchangeRates).set({
+        rate: insertRate.rate,
+        updatedAt: /* @__PURE__ */ new Date()
+      }).where(eq(exchangeRates.id, existing.id));
       const [rate] = await db.select().from(exchangeRates).where(eq(exchangeRates.id, existing.id));
       return rate;
     } else {
       const id = generateId();
-      const updatedAt = /* @__PURE__ */ new Date();
       await db.insert(exchangeRates).values({
         id,
-        fromCurrency: insertRate.fromCurrency,
-        toCurrency: insertRate.toCurrency,
-        rate: insertRate.rate,
-        updatedAt
+        ...insertRate,
+        updatedAt: /* @__PURE__ */ new Date()
       });
       const [rate] = await db.select().from(exchangeRates).where(eq(exchangeRates.id, id));
       return rate;
@@ -285,7 +326,7 @@ var DatabaseStorage = class {
   }
   // Guarantee Letters
   async getGuaranteeLetters() {
-    return await db.select({
+    const letters = await db.select({
       id: guaranteeLetters.id,
       bankId: guaranteeLetters.bankId,
       projectId: guaranteeLetters.projectId,
@@ -297,15 +338,32 @@ var DatabaseStorage = class {
       bsmvAndOtherCosts: guaranteeLetters.bsmvAndOtherCosts,
       currency: guaranteeLetters.currency,
       purchaseDate: guaranteeLetters.purchaseDate,
-      letterDate: guaranteeLetters.letterDate,
       expiryDate: guaranteeLetters.expiryDate,
       status: guaranteeLetters.status,
       notes: guaranteeLetters.notes,
       createdAt: guaranteeLetters.createdAt,
       updatedAt: guaranteeLetters.updatedAt,
-      bank: banks,
-      project: projects
+      bank: {
+        id: banks.id,
+        name: banks.name,
+        code: banks.code,
+        branchName: banks.branchName,
+        contactPerson: banks.contactPerson,
+        phone: banks.phone,
+        email: banks.email,
+        address: banks.address,
+        status: banks.status,
+        createdAt: banks.createdAt
+      },
+      project: {
+        id: projects.id,
+        name: projects.name,
+        description: projects.description,
+        status: projects.status,
+        createdAt: projects.createdAt
+      }
     }).from(guaranteeLetters).leftJoin(banks, eq(guaranteeLetters.bankId, banks.id)).leftJoin(projects, eq(guaranteeLetters.projectId, projects.id)).orderBy(desc(guaranteeLetters.createdAt));
+    return letters;
   }
   async getGuaranteeLetter(id) {
     const [letter] = await db.select({
@@ -320,45 +378,74 @@ var DatabaseStorage = class {
       bsmvAndOtherCosts: guaranteeLetters.bsmvAndOtherCosts,
       currency: guaranteeLetters.currency,
       purchaseDate: guaranteeLetters.purchaseDate,
-      letterDate: guaranteeLetters.letterDate,
       expiryDate: guaranteeLetters.expiryDate,
       status: guaranteeLetters.status,
       notes: guaranteeLetters.notes,
       createdAt: guaranteeLetters.createdAt,
       updatedAt: guaranteeLetters.updatedAt,
-      bank: banks,
-      project: projects
+      bank: {
+        id: banks.id,
+        name: banks.name,
+        code: banks.code,
+        branchName: banks.branchName,
+        contactPerson: banks.contactPerson,
+        phone: banks.phone,
+        email: banks.email,
+        address: banks.address,
+        status: banks.status,
+        createdAt: banks.createdAt
+      },
+      project: {
+        id: projects.id,
+        name: projects.name,
+        description: projects.description,
+        status: projects.status,
+        createdAt: projects.createdAt
+      }
     }).from(guaranteeLetters).leftJoin(banks, eq(guaranteeLetters.bankId, banks.id)).leftJoin(projects, eq(guaranteeLetters.projectId, projects.id)).where(eq(guaranteeLetters.id, id));
     return letter || void 0;
   }
   async createGuaranteeLetter(insertLetter) {
     const id = generateId();
-    const createdAt = /* @__PURE__ */ new Date();
-    const updatedAt = /* @__PURE__ */ new Date();
     await db.insert(guaranteeLetters).values({
       id,
       bankId: insertLetter.bankId,
       projectId: insertLetter.projectId,
       letterType: insertLetter.letterType,
-      contractAmount: insertLetter.contractAmount,
-      letterPercentage: insertLetter.letterPercentage,
-      letterAmount: insertLetter.letterAmount,
-      commissionRate: insertLetter.commissionRate,
-      bsmvAndOtherCosts: insertLetter.bsmvAndOtherCosts,
+      contractAmount: insertLetter.contractAmount?.toString() ?? "0",
+      letterPercentage: insertLetter.letterPercentage?.toString() ?? "0",
+      letterAmount: insertLetter.letterAmount?.toString() ?? "0",
+      commissionRate: insertLetter.commissionRate?.toString() ?? "0",
+      bsmvAndOtherCosts: insertLetter.bsmvAndOtherCosts?.toString() ?? "0",
       currency: insertLetter.currency,
       purchaseDate: insertLetter.purchaseDate,
-      letterDate: insertLetter.letterDate,
       expiryDate: insertLetter.expiryDate,
       status: insertLetter.status ?? "aktif",
       notes: insertLetter.notes,
-      createdAt,
-      updatedAt
+      createdAt: /* @__PURE__ */ new Date(),
+      updatedAt: /* @__PURE__ */ new Date()
     });
     const [letter] = await db.select().from(guaranteeLetters).where(eq(guaranteeLetters.id, id));
     return letter;
   }
   async updateGuaranteeLetter(id, insertLetter) {
-    await db.update(guaranteeLetters).set({ ...insertLetter, updatedAt: sql`now()` }).where(eq(guaranteeLetters.id, id));
+    const updateData = {};
+    if (insertLetter.bankId !== void 0) updateData.bankId = insertLetter.bankId;
+    if (insertLetter.projectId !== void 0) updateData.projectId = insertLetter.projectId;
+    if (insertLetter.letterType !== void 0) updateData.letterType = insertLetter.letterType;
+    if (insertLetter.contractAmount !== void 0) updateData.contractAmount = insertLetter.contractAmount.toString();
+    if (insertLetter.letterPercentage !== void 0) updateData.letterPercentage = insertLetter.letterPercentage.toString();
+    if (insertLetter.letterAmount !== void 0) updateData.letterAmount = insertLetter.letterAmount.toString();
+    if (insertLetter.commissionRate !== void 0) updateData.commissionRate = insertLetter.commissionRate.toString();
+    if (insertLetter.bsmvAndOtherCosts !== void 0) updateData.bsmvAndOtherCosts = insertLetter.bsmvAndOtherCosts.toString();
+    if (insertLetter.currency !== void 0) updateData.currency = insertLetter.currency;
+    if (insertLetter.purchaseDate !== void 0) updateData.purchaseDate = insertLetter.purchaseDate;
+    if (insertLetter.expiryDate !== void 0) updateData.expiryDate = insertLetter.expiryDate;
+    if (insertLetter.status !== void 0) updateData.status = insertLetter.status;
+    if (insertLetter.notes !== void 0) updateData.notes = insertLetter.notes;
+    await db.update(guaranteeLetters).set({
+      ...updateData
+    }).where(eq(guaranteeLetters.id, id));
     const [letter] = await db.select().from(guaranteeLetters).where(eq(guaranteeLetters.id, id));
     return letter;
   }
@@ -366,54 +453,28 @@ var DatabaseStorage = class {
     await db.delete(guaranteeLetters).where(eq(guaranteeLetters.id, id));
   }
   async getGuaranteeLettersByProject(projectId) {
-    return await db.select({
-      id: guaranteeLetters.id,
-      bankId: guaranteeLetters.bankId,
-      projectId: guaranteeLetters.projectId,
-      letterType: guaranteeLetters.letterType,
-      contractAmount: guaranteeLetters.contractAmount,
-      letterPercentage: guaranteeLetters.letterPercentage,
-      letterAmount: guaranteeLetters.letterAmount,
-      commissionRate: guaranteeLetters.commissionRate,
-      bsmvAndOtherCosts: guaranteeLetters.bsmvAndOtherCosts,
-      currency: guaranteeLetters.currency,
-      purchaseDate: guaranteeLetters.purchaseDate,
-      letterDate: guaranteeLetters.letterDate,
-      expiryDate: guaranteeLetters.expiryDate,
-      status: guaranteeLetters.status,
-      notes: guaranteeLetters.notes,
-      createdAt: guaranteeLetters.createdAt,
-      updatedAt: guaranteeLetters.updatedAt,
-      bank: banks,
-      project: projects
-    }).from(guaranteeLetters).leftJoin(banks, eq(guaranteeLetters.bankId, banks.id)).leftJoin(projects, eq(guaranteeLetters.projectId, projects.id)).where(eq(guaranteeLetters.projectId, projectId)).orderBy(desc(guaranteeLetters.createdAt));
+    return await db.query.guaranteeLetters.findMany({
+      where: eq(guaranteeLetters.projectId, projectId),
+      with: {
+        bank: true,
+        project: true
+      },
+      orderBy: [desc(guaranteeLetters.createdAt)]
+    });
   }
   async getGuaranteeLettersByBank(bankId) {
-    return await db.select({
-      id: guaranteeLetters.id,
-      bankId: guaranteeLetters.bankId,
-      projectId: guaranteeLetters.projectId,
-      letterType: guaranteeLetters.letterType,
-      contractAmount: guaranteeLetters.contractAmount,
-      letterPercentage: guaranteeLetters.letterPercentage,
-      letterAmount: guaranteeLetters.letterAmount,
-      commissionRate: guaranteeLetters.commissionRate,
-      bsmvAndOtherCosts: guaranteeLetters.bsmvAndOtherCosts,
-      currency: guaranteeLetters.currency,
-      purchaseDate: guaranteeLetters.purchaseDate,
-      letterDate: guaranteeLetters.letterDate,
-      expiryDate: guaranteeLetters.expiryDate,
-      status: guaranteeLetters.status,
-      notes: guaranteeLetters.notes,
-      createdAt: guaranteeLetters.createdAt,
-      updatedAt: guaranteeLetters.updatedAt,
-      bank: banks,
-      project: projects
-    }).from(guaranteeLetters).leftJoin(banks, eq(guaranteeLetters.bankId, banks.id)).leftJoin(projects, eq(guaranteeLetters.projectId, projects.id)).where(eq(guaranteeLetters.bankId, bankId)).orderBy(desc(guaranteeLetters.createdAt));
+    return await db.query.guaranteeLetters.findMany({
+      where: eq(guaranteeLetters.bankId, bankId),
+      with: {
+        bank: true,
+        project: true
+      },
+      orderBy: [desc(guaranteeLetters.createdAt)]
+    });
   }
   // Credits
   async getCredits() {
-    return await db.select({
+    const results = await db.select({
       id: credits.id,
       bankId: credits.bankId,
       projectId: credits.projectId,
@@ -427,9 +488,27 @@ var DatabaseStorage = class {
       notes: credits.notes,
       createdAt: credits.createdAt,
       updatedAt: credits.updatedAt,
-      bank: banks,
-      project: projects
+      bank: {
+        id: banks.id,
+        name: banks.name,
+        code: banks.code,
+        branchName: banks.branchName,
+        contactPerson: banks.contactPerson,
+        phone: banks.phone,
+        email: banks.email,
+        address: banks.address,
+        status: banks.status,
+        createdAt: banks.createdAt
+      },
+      project: {
+        id: projects.id,
+        name: projects.name,
+        description: projects.description,
+        status: projects.status,
+        createdAt: projects.createdAt
+      }
     }).from(credits).leftJoin(banks, eq(credits.bankId, banks.id)).leftJoin(projects, eq(credits.projectId, projects.id)).orderBy(desc(credits.createdAt));
+    return results;
   }
   async getCredit(id) {
     const [credit] = await db.select({
@@ -446,35 +525,63 @@ var DatabaseStorage = class {
       notes: credits.notes,
       createdAt: credits.createdAt,
       updatedAt: credits.updatedAt,
-      bank: banks,
-      project: projects
+      bank: {
+        id: banks.id,
+        name: banks.name,
+        code: banks.code,
+        branchName: banks.branchName,
+        contactPerson: banks.contactPerson,
+        phone: banks.phone,
+        email: banks.email,
+        address: banks.address,
+        status: banks.status,
+        createdAt: banks.createdAt
+      },
+      project: {
+        id: projects.id,
+        name: projects.name,
+        description: projects.description,
+        status: projects.status,
+        createdAt: projects.createdAt
+      }
     }).from(credits).leftJoin(banks, eq(credits.bankId, banks.id)).leftJoin(projects, eq(credits.projectId, projects.id)).where(eq(credits.id, id));
     return credit || void 0;
   }
   async createCredit(insertCredit) {
     const id = generateId();
-    const createdAt = /* @__PURE__ */ new Date();
-    const updatedAt = /* @__PURE__ */ new Date();
     await db.insert(credits).values({
       id,
       bankId: insertCredit.bankId,
       projectId: insertCredit.projectId,
       currency: insertCredit.currency,
-      principalAmount: insertCredit.principalAmount,
-      interestAmount: insertCredit.interestAmount,
-      totalRepaidAmount: insertCredit.totalRepaidAmount,
+      principalAmount: insertCredit.principalAmount?.toString() ?? "0",
+      interestAmount: insertCredit.interestAmount?.toString() ?? "0",
+      totalRepaidAmount: insertCredit.totalRepaidAmount?.toString() ?? "0",
       creditDate: insertCredit.creditDate,
       maturityDate: insertCredit.maturityDate,
       status: insertCredit.status ?? "devam-ediyor",
       notes: insertCredit.notes,
-      createdAt,
-      updatedAt
+      createdAt: /* @__PURE__ */ new Date(),
+      updatedAt: /* @__PURE__ */ new Date()
     });
     const [credit] = await db.select().from(credits).where(eq(credits.id, id));
     return credit;
   }
   async updateCredit(id, insertCredit) {
-    await db.update(credits).set({ ...insertCredit, updatedAt: sql`now()` }).where(eq(credits.id, id));
+    const updateData = {};
+    if (insertCredit.bankId !== void 0) updateData.bankId = insertCredit.bankId;
+    if (insertCredit.projectId !== void 0) updateData.projectId = insertCredit.projectId;
+    if (insertCredit.currency !== void 0) updateData.currency = insertCredit.currency;
+    if (insertCredit.principalAmount !== void 0) updateData.principalAmount = insertCredit.principalAmount.toString();
+    if (insertCredit.interestAmount !== void 0) updateData.interestAmount = insertCredit.interestAmount.toString();
+    if (insertCredit.totalRepaidAmount !== void 0) updateData.totalRepaidAmount = insertCredit.totalRepaidAmount.toString();
+    if (insertCredit.creditDate !== void 0) updateData.creditDate = insertCredit.creditDate;
+    if (insertCredit.maturityDate !== void 0) updateData.maturityDate = insertCredit.maturityDate;
+    if (insertCredit.status !== void 0) updateData.status = insertCredit.status;
+    if (insertCredit.notes !== void 0) updateData.notes = insertCredit.notes;
+    await db.update(credits).set({
+      ...updateData
+    }).where(eq(credits.id, id));
     const [credit] = await db.select().from(credits).where(eq(credits.id, id));
     return credit;
   }
@@ -482,7 +589,7 @@ var DatabaseStorage = class {
     await db.delete(credits).where(eq(credits.id, id));
   }
   async getCreditsByProject(projectId) {
-    return await db.select({
+    const results = await db.select({
       id: credits.id,
       bankId: credits.bankId,
       projectId: credits.projectId,
@@ -496,12 +603,30 @@ var DatabaseStorage = class {
       notes: credits.notes,
       createdAt: credits.createdAt,
       updatedAt: credits.updatedAt,
-      bank: banks,
-      project: projects
+      bank: {
+        id: banks.id,
+        name: banks.name,
+        code: banks.code,
+        branchName: banks.branchName,
+        contactPerson: banks.contactPerson,
+        phone: banks.phone,
+        email: banks.email,
+        address: banks.address,
+        status: banks.status,
+        createdAt: banks.createdAt
+      },
+      project: {
+        id: projects.id,
+        name: projects.name,
+        description: projects.description,
+        status: projects.status,
+        createdAt: projects.createdAt
+      }
     }).from(credits).leftJoin(banks, eq(credits.bankId, banks.id)).leftJoin(projects, eq(credits.projectId, projects.id)).where(eq(credits.projectId, projectId)).orderBy(desc(credits.createdAt));
+    return results;
   }
   async getCreditsByBank(bankId) {
-    return await db.select({
+    const results = await db.select({
       id: credits.id,
       bankId: credits.bankId,
       projectId: credits.projectId,
@@ -515,9 +640,27 @@ var DatabaseStorage = class {
       notes: credits.notes,
       createdAt: credits.createdAt,
       updatedAt: credits.updatedAt,
-      bank: banks,
-      project: projects
+      bank: {
+        id: banks.id,
+        name: banks.name,
+        code: banks.code,
+        branchName: banks.branchName,
+        contactPerson: banks.contactPerson,
+        phone: banks.phone,
+        email: banks.email,
+        address: banks.address,
+        status: banks.status,
+        createdAt: banks.createdAt
+      },
+      project: {
+        id: projects.id,
+        name: projects.name,
+        description: projects.description,
+        status: projects.status,
+        createdAt: projects.createdAt
+      }
     }).from(credits).leftJoin(banks, eq(credits.bankId, banks.id)).leftJoin(projects, eq(credits.projectId, projects.id)).where(eq(credits.bankId, bankId)).orderBy(desc(credits.createdAt));
+    return results;
   }
 };
 var storage = new DatabaseStorage();
@@ -554,6 +697,27 @@ async function registerRoutes(app2) {
         return res.status(400).json({ message: "Invalid data", errors: error.errors });
       }
       res.status(500).json({ message: "Failed to create project" });
+    }
+  });
+  app2.get("/api/guarantee-letters", async (req, res) => {
+    try {
+      const letters = await storage.getGuaranteeLetters();
+      res.json(letters);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch guarantee letters" });
+    }
+  });
+  app2.post("/api/guarantee-letters", async (req, res) => {
+    try {
+      const data = insertGuaranteeLetterSchema.parse(req.body);
+      const letter = await storage.createGuaranteeLetter(data);
+      res.status(201).json(letter);
+    } catch (error) {
+      console.error("Error creating guarantee letter:", error);
+      if (error instanceof z2.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create guarantee letter" });
     }
   });
   app2.patch("/api/projects/:id", async (req, res) => {
@@ -827,22 +991,39 @@ async function registerRoutes(app2) {
   });
   app2.get("/api/dashboard-stats", async (req, res) => {
     try {
+      const targetCurrency = req.query.currency || "TRY";
       const letters = await storage.getGuaranteeLetters();
       const credits2 = await storage.getCredits();
       const projects2 = await storage.getProjects();
       const banks2 = await storage.getBanks();
+      const exchangeRates2 = await storage.getExchangeRates();
       const totalLetters = letters.length;
       const activeLetters = letters.filter((l) => l.status === "aktif").length;
+      const convertAmount = (amount, fromCurrency, toCurrency) => {
+        if (fromCurrency === toCurrency) return amount;
+        const rate = exchangeRates2.find(
+          (r) => r.fromCurrency === fromCurrency && r.toCurrency === toCurrency || r.fromCurrency === toCurrency && r.toCurrency === fromCurrency
+        );
+        if (!rate) return amount;
+        if (rate.fromCurrency === fromCurrency) {
+          return amount * parseFloat(rate.rate.toString());
+        } else {
+          return amount / parseFloat(rate.rate.toString());
+        }
+      };
       const totalLetterAmount = letters.reduce((sum, letter) => {
-        return sum + parseFloat(letter.letterAmount || "0");
+        const amount = parseFloat(letter.letterAmount || "0");
+        return sum + convertAmount(amount, letter.currency, targetCurrency);
       }, 0);
       const totalCredits = credits2.length;
       const activeCredits = credits2.filter((c) => c.status === "devam-ediyor").length;
       const totalCreditAmount = credits2.reduce((sum, credit) => {
-        return sum + parseFloat(credit.principalAmount || "0") + parseFloat(credit.interestAmount || "0");
+        const amount = parseFloat(credit.principalAmount || "0") + parseFloat(credit.interestAmount || "0");
+        return sum + convertAmount(amount, credit.currency, targetCurrency);
       }, 0);
       const totalRepaidAmount = credits2.reduce((sum, credit) => {
-        return sum + parseFloat(credit.totalRepaidAmount || "0");
+        const amount = parseFloat(credit.totalRepaidAmount || "0");
+        return sum + convertAmount(amount, credit.currency, targetCurrency);
       }, 0);
       const today = /* @__PURE__ */ new Date();
       const thirtyDaysFromNow = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1e3);
@@ -877,7 +1058,8 @@ async function registerRoutes(app2) {
         overdueLetterPayments,
         overdueCreditPayments,
         totalProjects: projects2.length,
-        totalBanks: banks2.length
+        totalBanks: banks2.length,
+        currency: targetCurrency
       });
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch dashboard statistics" });
@@ -897,17 +1079,18 @@ import { createServer as createViteServer, createLogger } from "vite";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
-import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 var vite_config_default = defineConfig({
-  plugins: [
-    react(),
-    runtimeErrorOverlay(),
-    ...process.env.NODE_ENV !== "production" && process.env.REPL_ID !== void 0 ? [
-      await import("@replit/vite-plugin-cartographer").then(
-        (m) => m.cartographer()
-      )
-    ] : []
-  ],
+  plugins: [react()],
+  server: {
+    port: 5173,
+    proxy: {
+      "/api": {
+        target: "http://localhost:3000",
+        changeOrigin: true,
+        secure: false
+      }
+    }
+  },
   resolve: {
     alias: {
       "@": path.resolve(import.meta.dirname, "client", "src"),
@@ -919,15 +1102,6 @@ var vite_config_default = defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true
-  },
-  server: {
-    fs: {
-      strict: true,
-      deny: ["**/.*"]
-    },
-    proxy: {
-      "/api": "http://localhost:5000"
-    }
   }
 });
 

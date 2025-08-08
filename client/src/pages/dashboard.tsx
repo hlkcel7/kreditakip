@@ -24,7 +24,8 @@ import {
   ChartPie,
   Table,
   Calendar,
-  BarChart3
+  BarChart3,
+  Wallet
 } from "lucide-react";
 
 export default function Dashboard() {
@@ -36,7 +37,7 @@ export default function Dashboard() {
   const { selectedCurrency, formatCurrency } = useCurrency();
 
   // Mock exchange rates for now
-  const exchangeRates = {
+  const exchangeRates: { [key: string]: number } = {
     TRY: 1,
     USD: 32.5,
     EUR: 35.2,
@@ -50,6 +51,17 @@ export default function Dashboard() {
       const response = await fetch(`/api/dashboard-stats?currency=${selectedCurrency}`);
       if (!response.ok) throw new Error('Network response was not ok');
       return response.json();
+    }
+  });
+
+  const { data: totalCommission, isLoading: commissionLoading } = useQuery({
+    queryKey: ['/api/guarantee-letters/total-commission', selectedCurrency],
+    queryFn: async () => {
+      const response = await fetch('/api/guarantee-letters/total-commission');
+      if (!response.ok) throw new Error('Network response was not ok');
+      const data = await response.json();
+      console.log('Commission data:', data); // Debug için
+      return data;
     }
   });
 
@@ -81,7 +93,7 @@ export default function Dashboard() {
     }
   };
 
-  if (statsLoading || lettersLoading || creditsLoading) {
+  if (statsLoading || lettersLoading || creditsLoading || commissionLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="text-lg">Yükleniyor...</div>
@@ -176,6 +188,44 @@ export default function Dashboard() {
                           <p className="text-sm font-medium text-gray-500">Toplam Tutar</p>
                           <p className="text-2xl font-semibold text-gray-900">
                             {formatCurrency((stats as any)?.totalLetterAmount || 0)}
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardContent className="p-6">
+                      <div className="flex items-center">
+                        <div className="p-3 rounded-full bg-emerald-100">
+                          <Wallet className="h-6 w-6 text-emerald-600" />
+                        </div>
+                        <div className="ml-4">
+                          <p className="text-sm font-medium text-gray-500">Toplam Komisyon ve Masraflar</p>
+                          <p className="text-2xl font-semibold text-gray-900">
+                            {formatCurrency(
+                              totalCommission?.reduce((acc: number, curr: any) => {
+                                if (!curr?.currency) return acc;
+                                
+                                // Para birimi dönüşümü için oranları hesapla
+                                const fromCurrency = curr.currency as keyof typeof exchangeRates;
+                                const toCurrency = selectedCurrency as keyof typeof exchangeRates;
+                                const fromRate = exchangeRates[fromCurrency] || 1;
+                                const toRate = exchangeRates[toCurrency] || 1;
+                                const conversionRate = fromRate / toRate;
+                                
+                                // Komisyon ve masrafları topla ve dönüştür
+                                const totalInOriginalCurrency = (
+                                  Number(curr.totalCommission || 0) + 
+                                  Number(curr.totalBsmvAndOtherCosts || 0)
+                                );
+                                
+                                console.log(`Currency: ${curr.currency}, Total: ${totalInOriginalCurrency}, Rate: ${conversionRate}`);
+                                
+                                // Dönüştürülmüş tutarı ekle
+                                return acc + (totalInOriginalCurrency * conversionRate);
+                              }, 0) || 0
+                            )}
                           </p>
                         </div>
                       </div>

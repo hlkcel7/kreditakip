@@ -2,6 +2,9 @@ import { Express, Request, Response } from "express";
 import { storage } from "../storage";
 import { z } from "zod";
 import { insertGuaranteeLetterSchema } from "@shared/schema";
+import { sql } from "drizzle-orm";
+import { db } from "../db";
+import { guaranteeLetters } from "@shared/schema";
 
 const updateGuaranteeLetterSchema = insertGuaranteeLetterSchema.partial();
 
@@ -59,6 +62,53 @@ export const setupGuaranteeLettersRoutes = (app: Express) => {
       res.json(letters);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch guarantee letters" });
+    }
+  });
+
+  // Get total commission and costs
+  app.get("/api/guarantee-letters/total-commission", async (req: Request, res: Response) => {
+    try {
+      // Teminat mektuplarını ve hesaplanmış komisyonları alalım
+      const letters = await db.select({
+        currency: guaranteeLetters.currency,
+        letterAmount: guaranteeLetters.letterAmount,
+        commissionRate: guaranteeLetters.commissionRate,
+        bsmvAndOtherCosts: guaranteeLetters.bsmvAndOtherCosts,
+      })
+      .from(guaranteeLetters)
+      .where(sql`${guaranteeLetters.status} = 'aktif'`);
+
+      // Komisyon hesaplamalarını JavaScript'te yapalım
+      const commissionsByCurrency = letters.reduce((acc: any, letter) => {
+        const currency = letter.currency;
+        if (!acc[currency]) {
+          acc[currency] = {
+            currency,
+            totalCommission: 0,
+            totalBsmvAndOtherCosts: 0
+          };
+        }
+        
+        // Komisyon = Mektup tutarı * Komisyon oranı / 100
+        const letterAmount = Number(letter.letterAmount);
+        const commissionRate = Number(letter.commissionRate);
+        const bsmvAndOtherCosts = Number(letter.bsmvAndOtherCosts || 0);
+        
+        const commission = (letterAmount * commissionRate) / 100;
+        
+        acc[currency].totalCommission += commission;
+        acc[currency].totalBsmvAndOtherCosts += bsmvAndOtherCosts;
+        
+        return acc;
+      }, {});
+
+      const result = Object.values(commissionsByCurrency);
+      
+      console.log('Calculated commissions:', result); // Debug için
+      res.json(result);
+    } catch (error) {
+      console.error('Error calculating total commission:', error);
+      res.status(500).json({ message: "Failed to calculate total commission and costs" });
     }
   });
 };

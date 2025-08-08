@@ -224,6 +224,25 @@ export default function AddCreditModal({ open, onOpenChange }: AddCreditModalPro
 
               <FormField
                 control={form.control}
+                name="bsmvAndOtherCosts"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>BSMV ve Diğer Masraflar</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="0.00"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
                 name="totalRepaidAmount"
                 render={({ field }) => (
                   <FormItem>
