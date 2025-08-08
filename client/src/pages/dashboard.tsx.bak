@@ -2,13 +2,11 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Sidebar from "@/components/sidebar";
 import TabulatorTable from "@/components/tabulator-table";
-import PaymentSummaryTable from "@/components/payment-summary-table";
 import type { GuaranteeLetterWithRelations, CreditWithRelations } from "@shared/schema";
 import Charts from "@/components/charts";
 import CurrencyConverterModal from "@/components/currency-converter-modal";
 import AddLetterModal from "@/components/add-letter-modal";
 import AddCreditModal from "@/components/add-credit-modal";
-import LetterPaymentsModal from "@/components/letter-payments-modal";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -50,9 +48,7 @@ export default function Dashboard() {
   const [selectedProjects, setSelectedProjects] = useState<string[]>([]);
   const [selectedBanks, setSelectedBanks] = useState<string[]>([]);
   const [editingItem, setEditingItem] = useState<any>(null);
-  const [selectedLetter, setSelectedLetter] = useState<any>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isLetterPaymentsModalOpen, setIsLetterPaymentsModalOpen] = useState(false);
   const [deletingItem, setDeletingItem] = useState<any>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const { selectedCurrency, formatCurrency } = useCurrency();
@@ -352,12 +348,10 @@ export default function Dashboard() {
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between mb-6">
                       <h3 className="text-lg font-semibold text-gray-800">Teminat Mektupları</h3>
-                      <div className="flex items-center gap-2">
-                        <Button onClick={() => setIsAddLetterModalOpen(true)} className="bg-blue-600 hover:bg-blue-700">
-                          <Plus className="w-4 h-4 mr-2" />
-                          Yeni Mektup
-                        </Button>
-                      </div>
+                      <Button onClick={() => setIsAddLetterModalOpen(true)} className="bg-blue-600 hover:bg-blue-700">
+                        <Plus className="w-4 h-4 mr-2" />
+                        Yeni Mektup
+                      </Button>
                     </div>
                     <TabulatorTable 
                       data={letters} 
@@ -365,10 +359,6 @@ export default function Dashboard() {
                       exchangeRates={exchangeRates}
                       onEdit={handleEdit}
                       onDelete={handleDelete}
-                      onPayments={(row) => {
-                        setSelectedLetter(row);
-                        setIsLetterPaymentsModalOpen(true);
-                      }}
                     />
                   </CardContent>
                 </Card>
@@ -409,7 +399,10 @@ export default function Dashboard() {
                       </TabsList>
 
                       <TabsContent value="letter-commissions" className="mt-4">
-                        <PaymentSummaryTable />
+                        <div className="rounded-lg border p-4">
+                          <h3 className="text-lg font-semibold mb-4">Mektup Komisyonları</h3>
+                          {/* Mektup Komisyonları tablosu buraya gelecek */}
+                        </div>
                       </TabsContent>
 
                       <TabsContent value="credit-payments" className="mt-4">
@@ -492,12 +485,6 @@ export default function Dashboard() {
         }}
         initialValues={editingItem}
         isEditing={isEditModalOpen}
-      />
-
-      <LetterPaymentsModal 
-        isOpen={isLetterPaymentsModalOpen}
-        onClose={() => setIsLetterPaymentsModalOpen(false)}
-        letter={selectedLetter}
       />
 
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>

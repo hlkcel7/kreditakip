@@ -7,8 +7,7 @@ import {
   insertCurrencySchema,
   insertExchangeRateSchema,
   insertGuaranteeLetterSchema,
-  insertCreditSchema,
-  insertLetterPaymentSchema
+  insertCreditSchema
 } from "@shared/schema";
 import { z } from "zod";
 
@@ -69,37 +68,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid data", errors: error.errors });
       }
       res.status(500).json({ message: "Failed to create guarantee letter" });
-    }
-  });
-  
-  app.get("/api/letter-payments/:letterId/summary", async (req, res) => {
-    try {
-      const letterId = req.params.letterId;
-      const payments = await storage.getLetterPaymentsByLetterId(letterId);
-      const letter = await storage.getGuaranteeLetter(letterId);
-
-      if (!letter) {
-        return res.status(404).json({ message: "Guarantee letter not found" });
-      }
-
-      const letterAmount = Number(letter.letterAmount);
-      const commissionRate = Number(letter.commissionRate);
-      const totalCommission = (letterAmount * commissionRate) / 100;
-      
-      const totalPaid = payments.reduce((sum, payment) => sum + Number(payment.amount), 0);
-      const totalBsmv = payments.reduce((sum, payment) => sum + Number(payment.bsmv || 0), 0);
-      
-      res.json({
-        letterId,
-        totalCommission,
-        totalPaid,
-        totalBsmv,
-        remainingCommission: totalCommission - totalPaid,
-        payments: payments.length,
-        lastPaymentDate: payments.length > 0 ? payments[0].paymentDate : null
-      });
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch payment summary" });
     }
   });
 
@@ -441,59 +409,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ message: "Failed to delete credit" });
-    }
-  });
-
-  // Letter Payments routes
-  app.get("/api/letter-payments", async (req, res) => {
-    try {
-      const { letterId } = req.query;
-      
-      let payments;
-      if (letterId) {
-        payments = await storage.getLetterPaymentsByLetterId(letterId as string);
-      } else {
-        payments = await storage.getLetterPayments();
-      }
-      
-      res.json(payments);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch letter payments" });
-    }
-  });
-
-  app.post("/api/letter-payments", async (req, res) => {
-    try {
-      const data = insertLetterPaymentSchema.parse(req.body);
-      const payment = await storage.createLetterPayment(data);
-      res.status(201).json(payment);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid data", errors: error.errors });
-      }
-      res.status(500).json({ message: "Failed to create letter payment" });
-    }
-  });
-
-  app.patch("/api/letter-payments/:id", async (req, res) => {
-    try {
-      const data = insertLetterPaymentSchema.partial().parse(req.body);
-      const payment = await storage.updateLetterPayment(req.params.id, data);
-      res.json(payment);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid data", errors: error.errors });
-      }
-      res.status(500).json({ message: "Failed to update letter payment" });
-    }
-  });
-
-  app.delete("/api/letter-payments/:id", async (req, res) => {
-    try {
-      await storage.deleteLetterPayment(req.params.id);
-      res.status(204).send();
-    } catch (error) {
-      res.status(500).json({ message: "Failed to delete letter payment" });
     }
   });
 

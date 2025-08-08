@@ -6,7 +6,6 @@ import {
   exchangeRates, 
   guaranteeLetters,
   credits,
-  letterPayments,
   type Project,
   type InsertProject,
   type Bank,
@@ -20,9 +19,7 @@ import {
   type GuaranteeLetterWithRelations,
   type Credit,
   type InsertCredit,
-  type CreditWithRelations,
-  type LetterPayment,
-  type InsertLetterPayment,
+  type CreditWithRelations
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, sql, desc, and } from "drizzle-orm";
@@ -71,14 +68,6 @@ export interface IStorage {
   deleteCredit(id: string): Promise<void>;
   getCreditsByProject(projectId: string): Promise<CreditWithRelations[]>;
   getCreditsByBank(bankId: string): Promise<CreditWithRelations[]>;
-
-  // Letter Payments
-  getLetterPayments(): Promise<LetterPayment[]>;
-  getLetterPayment(id: string): Promise<LetterPayment | undefined>;
-  getLetterPaymentsByLetterId(letterId: string): Promise<LetterPayment[]>;
-  createLetterPayment(payment: InsertLetterPayment): Promise<LetterPayment>;
-  updateLetterPayment(id: string, payment: Partial<InsertLetterPayment>): Promise<LetterPayment>;
-  deleteLetterPayment(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -636,56 +625,6 @@ export class DatabaseStorage implements IStorage {
     .orderBy(desc(credits.createdAt));
 
     return results;
-  }
-
-  // Letter Payments
-  async getLetterPayments(): Promise<LetterPayment[]> {
-    return await db.select().from(letterPayments).orderBy(desc(letterPayments.createdAt));
-  }
-
-  async getLetterPayment(id: string): Promise<LetterPayment | undefined> {
-    const [payment] = await db.select().from(letterPayments).where(eq(letterPayments.id, id));
-    return payment || undefined;
-  }
-
-  async getLetterPaymentsByLetterId(letterId: string): Promise<LetterPayment[]> {
-    return await db.select().from(letterPayments)
-      .where(eq(letterPayments.letterId, letterId))
-      .orderBy(desc(letterPayments.createdAt));
-  }
-
-  async createLetterPayment(insertPayment: InsertLetterPayment): Promise<LetterPayment> {
-    const id = generateId();
-    const paymentData = {
-      id,
-      letterId: insertPayment.letterId,
-      paymentDate: insertPayment.paymentDate,
-      amount: insertPayment.amount.toString(),
-      bsmv: insertPayment.bsmv?.toString() ?? "0",
-      receiptNo: insertPayment.receiptNo,
-      description: insertPayment.description,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-    await db.insert(letterPayments).values(paymentData);
-    
-    const [payment] = await db.select().from(letterPayments).where(eq(letterPayments.id, id));
-    return payment;
-  }
-
-  async updateLetterPayment(id: string, insertPayment: Partial<InsertLetterPayment>): Promise<LetterPayment> {
-    const updateData: Record<string, any> = { ...insertPayment, updatedAt: new Date() };
-
-    await db.update(letterPayments)
-      .set(updateData)
-      .where(eq(letterPayments.id, id));
-
-    const [payment] = await db.select().from(letterPayments).where(eq(letterPayments.id, id));
-    return payment;
-  }
-
-  async deleteLetterPayment(id: string): Promise<void> {
-    await db.delete(letterPayments).where(eq(letterPayments.id, id));
   }
 }
 
