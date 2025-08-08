@@ -30,7 +30,7 @@ import type { Bank, Project } from "@shared/schema";
 interface AddCreditModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  initialValues?: Partial<FormData>;
+  initialValues?: Partial<FormData> & { id?: string };
   isEditing?: boolean;
 }
 

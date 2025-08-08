@@ -245,30 +245,30 @@ export default function Dashboard() {
             <div className="flex-1 overflow-y-auto p-6">
               <TabsContent value="overview" className="space-y-8">
                 {/* Summary Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                  <Card>
-                    <CardContent className="p-6">
+                <div className="flex gap-4 overflow-x-auto py-2">
+                  <Card className="flex-1 min-w-[200px]">
+                    <CardContent className="p-4">
                       <div className="flex items-center">
-                        <div className="p-3 rounded-full bg-blue-100">
-                          <File className="h-6 w-6 text-blue-600" />
+                        <div className="p-2 rounded-full bg-blue-100">
+                          <File className="h-5 w-5 text-blue-600" />
                         </div>
-                        <div className="ml-4">
+                        <div className="ml-3">
                           <p className="text-sm font-medium text-gray-500">Toplam Mektup</p>
-                          <p className="text-2xl font-semibold text-gray-900">{(stats as any)?.totalLetters || 0}</p>
+                          <p className="text-xl font-semibold text-gray-900">{(stats as any)?.totalLetters || 0}</p>
                         </div>
                       </div>
                     </CardContent>
                   </Card>
 
-                  <Card>
-                    <CardContent className="p-6">
+                  <Card className="flex-1 min-w-[200px]">
+                    <CardContent className="p-4">
                       <div className="flex items-center">
-                        <div className="p-3 rounded-full bg-green-100">
-                          <TrendingUp className="h-6 w-6 text-green-600" />
+                        <div className="p-2 rounded-full bg-green-100">
+                          <TrendingUp className="h-5 w-5 text-green-600" />
                         </div>
-                        <div className="ml-4">
+                        <div className="ml-3">
                           <p className="text-sm font-medium text-gray-500">Toplam Tutar</p>
-                          <p className="text-2xl font-semibold text-gray-900">
+                          <p className="text-xl font-semibold text-gray-900">
                             {formatCurrency((stats as any)?.totalLetterAmount || 0)}
                           </p>
                         </div>
@@ -276,35 +276,30 @@ export default function Dashboard() {
                     </CardContent>
                   </Card>
 
-                  <Card>
-                    <CardContent className="p-6">
+                  <Card className="flex-1 min-w-[250px]">
+                    <CardContent className="p-4">
                       <div className="flex items-center">
-                        <div className="p-3 rounded-full bg-emerald-100">
-                          <Wallet className="h-6 w-6 text-emerald-600" />
+                        <div className="p-2 rounded-full bg-emerald-100">
+                          <Wallet className="h-5 w-5 text-emerald-600" />
                         </div>
-                        <div className="ml-4">
+                        <div className="ml-3">
                           <p className="text-sm font-medium text-gray-500">Toplam Komisyon ve Masraflar</p>
-                          <p className="text-2xl font-semibold text-gray-900">
+                          <p className="text-xl font-semibold text-gray-900">
                             {formatCurrency(
                               totalCommission?.reduce((acc: number, curr: any) => {
                                 if (!curr?.currency) return acc;
                                 
-                                // Para birimi dönüşümü için oranları hesapla
                                 const fromCurrency = curr.currency as keyof typeof exchangeRates;
                                 const toCurrency = selectedCurrency as keyof typeof exchangeRates;
                                 const fromRate = exchangeRates[fromCurrency] || 1;
                                 const toRate = exchangeRates[toCurrency] || 1;
                                 const conversionRate = fromRate / toRate;
                                 
-                                // Komisyon ve masrafları topla ve dönüştür
                                 const totalInOriginalCurrency = (
                                   Number(curr.totalCommission || 0) + 
                                   Number(curr.totalBsmvAndOtherCosts || 0)
                                 );
                                 
-                                console.log(`Currency: ${curr.currency}, Total: ${totalInOriginalCurrency}, Rate: ${conversionRate}`);
-                                
-                                // Dönüştürülmüş tutarı ekle
                                 return acc + (totalInOriginalCurrency * conversionRate);
                               }, 0) || 0
                             )}
@@ -314,29 +309,29 @@ export default function Dashboard() {
                     </CardContent>
                   </Card>
 
-                  <Card>
-                    <CardContent className="p-6">
+                  <Card className="flex-1 min-w-[200px]">
+                    <CardContent className="p-4">
                       <div className="flex items-center">
-                        <div className="p-3 rounded-full bg-yellow-100">
-                          <Clock className="h-6 w-6 text-yellow-600" />
+                        <div className="p-2 rounded-full bg-yellow-100">
+                          <Clock className="h-5 w-5 text-yellow-600" />
                         </div>
-                        <div className="ml-4">
+                        <div className="ml-3">
                           <p className="text-sm font-medium text-gray-500">Yaklaşan Ödemeler</p>
-                          <p className="text-2xl font-semibold text-gray-900">{(stats as any)?.upcomingPayments || 0}</p>
+                          <p className="text-xl font-semibold text-gray-900">{(stats as any)?.upcomingPayments || 0}</p>
                         </div>
                       </div>
                     </CardContent>
                   </Card>
 
-                  <Card>
-                    <CardContent className="p-6">
+                  <Card className="flex-1 min-w-[200px]">
+                    <CardContent className="p-4">
                       <div className="flex items-center">
-                        <div className="p-3 rounded-full bg-red-100">
-                          <AlertTriangle className="h-6 w-6 text-red-600" />
+                        <div className="p-2 rounded-full bg-red-100">
+                          <AlertTriangle className="h-5 w-5 text-red-600" />
                         </div>
-                        <div className="ml-4">
+                        <div className="ml-3">
                           <p className="text-sm font-medium text-gray-500">Geciken Ödemeler</p>
-                          <p className="text-2xl font-semibold text-gray-900">{(stats as any)?.overduePayments || 0}</p>
+                          <p className="text-xl font-semibold text-gray-900">{(stats as any)?.overduePayments || 0}</p>
                         </div>
                       </div>
                     </CardContent>

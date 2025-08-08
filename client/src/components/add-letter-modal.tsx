@@ -58,6 +58,9 @@ interface AddLetterModalProps {
 }
 
 type FieldType = {
+  // ID alanı
+  id?: string;
+
   // Sayısal alanlar (form'da string olarak tutulacak)
   contractAmount: string;
   letterPercentage: string;
