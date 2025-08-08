@@ -53,6 +53,8 @@ type FormData = z.infer<typeof formSchema>;
 interface AddLetterModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  initialValues?: Partial<FieldType>;
+  isEditing?: boolean;
 }
 
 type FieldType = {
@@ -76,7 +78,7 @@ type FieldType = {
   notes: string;
 };
 
-export default function AddLetterModal({ open, onOpenChange }: AddLetterModalProps) {
+export default function AddLetterModal({ open, onOpenChange, initialValues, isEditing = false }: AddLetterModalProps) {
   const { toast } = useToast();
 
   const { data: projects } = useQuery({
@@ -93,27 +95,27 @@ export default function AddLetterModal({ open, onOpenChange }: AddLetterModalPro
     resolver: zodResolver(formSchema),
     defaultValues: {
       // String alanlar
-      letterType: "",
-      currency: "TRY",
-      status: "aktif",
-      projectId: "",
-      bankId: "",
-      notes: "",
+      letterType: initialValues?.letterType ?? "",
+      currency: initialValues?.currency ?? "TRY",
+      status: initialValues?.status ?? "aktif",
+      projectId: initialValues?.projectId ?? "",
+      bankId: initialValues?.bankId ?? "",
+      notes: initialValues?.notes ?? "",
       
       // Sayısal alanlar (string olarak)
-      contractAmount: "0",
-      letterPercentage: "0",
-      letterAmount: "0",
-      commissionRate: "0",
-      bsmvAndOtherCosts: "0",
+      contractAmount: initialValues?.contractAmount?.toString() ?? "0",
+      letterPercentage: initialValues?.letterPercentage?.toString() ?? "0",
+      letterAmount: initialValues?.letterAmount?.toString() ?? "0",
+      commissionRate: initialValues?.commissionRate?.toString() ?? "0",
+      bsmvAndOtherCosts: initialValues?.bsmvAndOtherCosts?.toString() ?? "0",
       
       // Tarih alanları
-      purchaseDate: new Date(),
-      expiryDate: null,
+      purchaseDate: initialValues?.purchaseDate ? new Date(initialValues.purchaseDate) : new Date(),
+      expiryDate: initialValues?.expiryDate ? new Date(initialValues.expiryDate) : null,
     },
   });
 
-  const createLetterMutation = useMutation({
+  const letterMutation = useMutation({
     mutationFn: async (data: FieldType) => {
       // Form verilerini API'ye göndermeden önce sayısal değerlere dönüştür
       const submitData = {
@@ -127,7 +129,12 @@ export default function AddLetterModal({ open, onOpenChange }: AddLetterModalPro
         expiryDate: data.expiryDate
       };
       
-      const response = await apiRequest('POST', '/api/guarantee-letters', submitData);
+      const method = isEditing ? 'PATCH' : 'POST';
+      const url = isEditing 
+        ? `/api/guarantee-letters/${initialValues?.id}`
+        : '/api/guarantee-letters';
+        
+      const response = await apiRequest(method, url, submitData);
       return response.json();
     },
     onSuccess: () => {
@@ -150,7 +157,7 @@ export default function AddLetterModal({ open, onOpenChange }: AddLetterModalPro
   });
 
   const onSubmit = (data: FieldType) => {
-    createLetterMutation.mutate(data);
+    letterMutation.mutate(data);
   };
 
   // Calculate letter amount when contract amount or percentage changes
@@ -168,7 +175,9 @@ export default function AddLetterModal({ open, onOpenChange }: AddLetterModalPro
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Yeni Teminat Mektubu Ekle</DialogTitle>
+          <DialogTitle>
+            {isEditing ? 'Teminat Mektubu Düzenle' : 'Yeni Teminat Mektubu Ekle'}
+          </DialogTitle>
         </DialogHeader>
         
         <Form {...form}>
@@ -440,8 +449,8 @@ export default function AddLetterModal({ open, onOpenChange }: AddLetterModalPro
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 İptal
               </Button>
-              <Button type="submit" disabled={createLetterMutation.isPending}>
-                {createLetterMutation.isPending ? "Kaydediliyor..." : "Kaydet"}
+              <Button type="submit" disabled={letterMutation.isPending}>
+                {letterMutation.isPending ? "Kaydediliyor..." : (isEditing ? "Güncelle" : "Kaydet")}
               </Button>
             </div>
           </form>

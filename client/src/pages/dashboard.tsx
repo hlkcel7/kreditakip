@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Sidebar from "@/components/sidebar";
 import TabulatorTable from "@/components/tabulator-table";
 import type { GuaranteeLetterWithRelations, CreditWithRelations } from "@shared/schema";
@@ -9,9 +9,20 @@ import AddLetterModal from "@/components/add-letter-modal";
 import AddCreditModal from "@/components/add-credit-modal";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { useCurrency } from "@/hooks/use-currency";
+import { useToast } from "@/hooks/use-toast";
 import { exportToExcel, exportToPDF } from "@/lib/export-utils";
 import { 
   File, 
@@ -29,11 +40,17 @@ import {
 } from "lucide-react";
 
 export default function Dashboard() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [isCurrencyModalOpen, setIsCurrencyModalOpen] = useState(false);
   const [isAddLetterModalOpen, setIsAddLetterModalOpen] = useState(false);
   const [isAddCreditModalOpen, setIsAddCreditModalOpen] = useState(false);
   const [selectedProjects, setSelectedProjects] = useState<string[]>([]);
   const [selectedBanks, setSelectedBanks] = useState<string[]>([]);
+  const [editingItem, setEditingItem] = useState<any>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [deletingItem, setDeletingItem] = useState<any>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const { selectedCurrency, formatCurrency } = useCurrency();
 
   // Mock exchange rates for now
@@ -67,6 +84,11 @@ export default function Dashboard() {
 
   const { data: letters = [], isLoading: lettersLoading } = useQuery<GuaranteeLetterWithRelations[]>({
     queryKey: ['/api/guarantee-letters'],
+    queryFn: async () => {
+      const response = await fetch('/api/guarantee-letters');
+      if (!response.ok) throw new Error('Network response was not ok');
+      return response.json();
+    }
   });
 
   const { data: credits = [], isLoading: creditsLoading } = useQuery<CreditWithRelations[]>({
@@ -80,10 +102,20 @@ export default function Dashboard() {
 
   const { data: projects } = useQuery({
     queryKey: ['/api/projects'],
+    queryFn: async () => {
+      const response = await fetch('/api/projects');
+      if (!response.ok) throw new Error('Network response was not ok');
+      return response.json();
+    }
   });
 
   const { data: banks } = useQuery({
     queryKey: ['/api/banks'],
+    queryFn: async () => {
+      const response = await fetch('/api/banks');
+      if (!response.ok) throw new Error('Network response was not ok');
+      return response.json();
+    }
   });
 
   const handleExportExcel = async () => {
@@ -95,6 +127,51 @@ export default function Dashboard() {
   const handleExportPDF = async () => {
     if (letters && Array.isArray(letters)) {
       await exportToPDF(letters, 'teminat-mektuplari.pdf');
+    }
+  };
+
+  const handleEdit = (item: any) => {
+    setEditingItem(item);
+    setIsEditModalOpen(true);
+  };
+
+  const handleDelete = (item: any) => {
+    setDeletingItem(item);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletingItem) return;
+
+    const endpoint = deletingItem.letterType ? '/api/guarantee-letters' : '/api/credits';
+    
+    try {
+      const response = await fetch(`${endpoint}/${deletingItem.id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Silme işlemi başarısız oldu');
+      }
+
+      // Veriyi yenile
+      queryClient.invalidateQueries({ queryKey: ['/api/guarantee-letters'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/credits'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/dashboard-stats'] });
+
+      toast({
+        title: "Başarılı",
+        description: "Kayıt başarıyla silindi.",
+      });
+    } catch (error) {
+      toast({
+        title: "Hata",
+        description: "Silme işlemi sırasında bir hata oluştu.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleteDialogOpen(false);
+      setDeletingItem(null);
     }
   };
 
@@ -285,6 +362,8 @@ export default function Dashboard() {
                       data={letters} 
                       selectedCurrency={selectedCurrency}
                       exchangeRates={exchangeRates}
+                      onEdit={handleEdit}
+                      onDelete={handleDelete}
                     />
                   </CardContent>
                 </Card>
@@ -306,6 +385,8 @@ export default function Dashboard() {
                       selectedCurrency={selectedCurrency}
                       exchangeRates={exchangeRates}
                       isCredits={true}
+                      onEdit={handleEdit}
+                      onDelete={handleDelete}
                     />
                   </CardContent>
                 </Card>
@@ -386,14 +467,47 @@ export default function Dashboard() {
       />
 
       <AddLetterModal
-        open={isAddLetterModalOpen}
-        onOpenChange={setIsAddLetterModalOpen}
+        open={isAddLetterModalOpen || (isEditModalOpen && editingItem?.letterType !== undefined)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setIsAddLetterModalOpen(false);
+            setIsEditModalOpen(false);
+            setEditingItem(null);
+          }
+        }}
+        initialValues={editingItem}
+        isEditing={isEditModalOpen}
       />
 
       <AddCreditModal
-        open={isAddCreditModalOpen}
-        onOpenChange={setIsAddCreditModalOpen}
+        open={isAddCreditModalOpen || (isEditModalOpen && editingItem?.creditDate !== undefined)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setIsAddCreditModalOpen(false);
+            setIsEditModalOpen(false);
+            setEditingItem(null);
+          }
+        }}
+        initialValues={editingItem}
+        isEditing={isEditModalOpen}
       />
+
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Kayıt Silinecek</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bu kaydı silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setIsDeleteDialogOpen(false)}>İptal</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDelete} className="bg-red-600 hover:bg-red-700">
+              Sil
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

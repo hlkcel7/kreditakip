@@ -30,6 +30,8 @@ import type { Bank, Project } from "@shared/schema";
 interface AddCreditModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  initialValues?: Partial<FormData>;
+  isEditing?: boolean;
 }
 
 const formSchema = insertCreditSchema.extend({
@@ -39,7 +41,7 @@ const formSchema = insertCreditSchema.extend({
 
 type FormData = z.infer<typeof formSchema>;
 
-export default function AddCreditModal({ open, onOpenChange }: AddCreditModalProps) {
+export default function AddCreditModal({ open, onOpenChange, initialValues, isEditing = false }: AddCreditModalProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -54,17 +56,17 @@ export default function AddCreditModal({ open, onOpenChange }: AddCreditModalPro
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      bankId: "",
-      projectId: "",
-      principalAmount: "0",
-      interestAmount: "0",
-      bsmvAndOtherCosts: "0",
-      totalRepaidAmount: "0",
-      currency: "TRY",
-      creditDate: "",
-      maturityDate: "",
-      status: "devam-ediyor",
-      notes: "",
+      bankId: initialValues?.bankId ?? "",
+      projectId: initialValues?.projectId ?? "",
+      principalAmount: initialValues?.principalAmount?.toString() ?? "0",
+      interestAmount: initialValues?.interestAmount?.toString() ?? "0",
+      bsmvAndOtherCosts: initialValues?.bsmvAndOtherCosts?.toString() ?? "0",
+      totalRepaidAmount: initialValues?.totalRepaidAmount?.toString() ?? "0",
+      currency: initialValues?.currency ?? "TRY",
+      creditDate: initialValues?.creditDate ? new Date(initialValues.creditDate).toISOString().split('T')[0] : "",
+      maturityDate: initialValues?.maturityDate ? new Date(initialValues.maturityDate).toISOString().split('T')[0] : "",
+      status: initialValues?.status ?? "devam-ediyor",
+      notes: initialValues?.notes ?? "",
     },
   });
 
@@ -75,8 +77,13 @@ export default function AddCreditModal({ open, onOpenChange }: AddCreditModalPro
         creditDate: new Date(data.creditDate),
         maturityDate: new Date(data.maturityDate),
       };
-      console.log('Submitting credit:', submitData);
-      return apiRequest('POST', '/api/credits', submitData);
+      
+      const method = isEditing ? 'PATCH' : 'POST';
+      const url = isEditing 
+        ? `/api/credits/${initialValues?.id}`
+        : '/api/credits';
+      
+      return apiRequest(method, url, submitData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/credits'] });
@@ -105,7 +112,7 @@ export default function AddCreditModal({ open, onOpenChange }: AddCreditModalPro
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Yeni Kredi Ekle</DialogTitle>
+          <DialogTitle>{isEditing ? 'Kredi Düzenle' : 'Yeni Kredi Ekle'}</DialogTitle>
         </DialogHeader>
 
         <Form {...form}>
@@ -345,7 +352,7 @@ export default function AddCreditModal({ open, onOpenChange }: AddCreditModalPro
                 İptal
               </Button>
               <Button type="submit" disabled={mutation.isPending}>
-                {mutation.isPending ? "Ekleniyor..." : "Kredi Ekle"}
+                {mutation.isPending ? "Kaydediliyor..." : (isEditing ? "Güncelle" : "Kredi Ekle")}
               </Button>
             </div>
           </form>
