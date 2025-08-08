@@ -251,9 +251,10 @@ export default function TabulatorTable({ data, selectedCurrency, exchangeRates, 
           step: 0.01
         },
         formatter: (cell: any) => {
-          const value = parseFloat(cell.getValue() || '0');
+          const value = cell.getValue();
+          const numericValue = typeof value === 'string' ? parseFloat(value) : (value || 0);
           const currency = cell.getRow().getData().currency;
-          return formatCurrency(value, currency);
+          return formatCurrency(numericValue, currency);
         }
       },
       {

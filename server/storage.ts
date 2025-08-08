@@ -496,6 +496,7 @@ export class DatabaseStorage implements IStorage {
       currency: insertCredit.currency,
       principalAmount: insertCredit.principalAmount?.toString() ?? "0",
       interestAmount: insertCredit.interestAmount?.toString() ?? "0",
+      bsmvAndOtherCosts: insertCredit.bsmvAndOtherCosts?.toString() ?? "0",
       totalRepaidAmount: insertCredit.totalRepaidAmount?.toString() ?? "0",
       creditDate: insertCredit.creditDate,
       maturityDate: insertCredit.maturityDate,
@@ -517,6 +518,7 @@ export class DatabaseStorage implements IStorage {
     if (insertCredit.currency !== undefined) updateData.currency = insertCredit.currency;
     if (insertCredit.principalAmount !== undefined) updateData.principalAmount = insertCredit.principalAmount.toString();
     if (insertCredit.interestAmount !== undefined) updateData.interestAmount = insertCredit.interestAmount.toString();
+    if (insertCredit.bsmvAndOtherCosts !== undefined) updateData.bsmvAndOtherCosts = insertCredit.bsmvAndOtherCosts.toString();
     if (insertCredit.totalRepaidAmount !== undefined) updateData.totalRepaidAmount = insertCredit.totalRepaidAmount.toString();
     if (insertCredit.creditDate !== undefined) updateData.creditDate = insertCredit.creditDate;
     if (insertCredit.maturityDate !== undefined) updateData.maturityDate = insertCredit.maturityDate;
@@ -587,6 +589,7 @@ export class DatabaseStorage implements IStorage {
       projectId: credits.projectId,
       principalAmount: credits.principalAmount,
       interestAmount: credits.interestAmount,
+      bsmvAndOtherCosts: credits.bsmvAndOtherCosts,
       totalRepaidAmount: credits.totalRepaidAmount,
       currency: credits.currency,
       creditDate: credits.creditDate,

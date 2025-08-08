@@ -58,6 +58,7 @@ export default function AddCreditModal({ open, onOpenChange }: AddCreditModalPro
       projectId: "",
       principalAmount: "0",
       interestAmount: "0",
+      bsmvAndOtherCosts: "0",
       totalRepaidAmount: "0",
       currency: "TRY",
       creditDate: "",
@@ -74,6 +75,7 @@ export default function AddCreditModal({ open, onOpenChange }: AddCreditModalPro
         creditDate: new Date(data.creditDate),
         maturityDate: new Date(data.maturityDate),
       };
+      console.log('Submitting credit:', submitData);
       return apiRequest('POST', '/api/credits', submitData);
     },
     onSuccess: () => {

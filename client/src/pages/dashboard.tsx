@@ -71,6 +71,11 @@ export default function Dashboard() {
 
   const { data: credits = [], isLoading: creditsLoading } = useQuery<CreditWithRelations[]>({
     queryKey: ['/api/credits'],
+    queryFn: async () => {
+      const response = await fetch('/api/credits');
+      if (!response.ok) throw new Error('Network response was not ok');
+      return response.json();
+    }
   });
 
   const { data: projects } = useQuery({
@@ -297,7 +302,7 @@ export default function Dashboard() {
                     </div>
 
                     <TabulatorTable 
-                      data={credits} 
+                      data={credits || []} 
                       selectedCurrency={selectedCurrency}
                       exchangeRates={exchangeRates}
                       isCredits={true}

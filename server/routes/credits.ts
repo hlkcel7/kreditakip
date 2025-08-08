@@ -6,6 +6,20 @@ import { insertCreditSchema } from "@shared/schema";
 const updateCreditSchema = insertCreditSchema.partial();
 
 export const setupCreditsRoutes = (app: Express) => {
+  // Create a new credit
+  app.post("/api/credits", async (req: Request, res: Response) => {
+    try {
+      const data = insertCreditSchema.parse(req.body);
+      const newCredit = await storage.createCredit(data);
+      res.json(newCredit);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create credit" });
+    }
+  });
+
   // Get all credits
   app.get("/api/credits", async (req: Request, res: Response) => {
     try {
@@ -22,10 +36,11 @@ export const setupCreditsRoutes = (app: Express) => {
       const { id } = req.params;
       const updateData = updateCreditSchema.parse(req.body);
 
-      // Convert string number values to actual numbers
-      if (updateData.principalAmount) updateData.principalAmount = Number(updateData.principalAmount);
-      if (updateData.interestAmount) updateData.interestAmount = Number(updateData.interestAmount);
-      if (updateData.totalRepaidAmount) updateData.totalRepaidAmount = Number(updateData.totalRepaidAmount);
+      // Convert numbers to strings for storage
+      if (updateData.principalAmount) updateData.principalAmount = updateData.principalAmount.toString();
+      if (updateData.interestAmount) updateData.interestAmount = updateData.interestAmount.toString();
+      if (updateData.totalRepaidAmount) updateData.totalRepaidAmount = updateData.totalRepaidAmount.toString();
+      if (updateData.bsmvAndOtherCosts) updateData.bsmvAndOtherCosts = updateData.bsmvAndOtherCosts.toString();
 
       const updatedCredit = await storage.updateCredit(id, updateData);
       if (!updatedCredit) {
