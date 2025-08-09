@@ -90,14 +90,19 @@ export const setupGuaranteeLettersRoutes = (app: Express) => {
         }
         
         // Komisyon = Mektup tutarı * Komisyon oranı / 100
-        const letterAmount = Number(letter.letterAmount);
-        const commissionRate = Number(letter.commissionRate);
+        const letterAmount = Number(letter.letterAmount) || 0;
+        const commissionRate = Number(letter.commissionRate) || 0;
         const bsmvAndOtherCosts = Number(letter.bsmvAndOtherCosts || 0);
         
         const commission = (letterAmount * commissionRate) / 100;
         
-        acc[currency].totalCommission += commission;
-        acc[currency].totalBsmvAndOtherCosts += bsmvAndOtherCosts;
+        // Sayısal kontrolleri ekle
+        if (!isNaN(commission)) {
+          acc[currency].totalCommission += commission;
+        }
+        if (!isNaN(bsmvAndOtherCosts)) {
+          acc[currency].totalBsmvAndOtherCosts += bsmvAndOtherCosts;
+        }
         
         return acc;
       }, {});

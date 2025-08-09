@@ -181,8 +181,16 @@ export default function TabulatorTable({
           const commissionRate = parseFloat(rowData.commissionRate || '0');
           const bsmvAndOtherCosts = parseFloat(rowData.bsmvAndOtherCosts || '0');
           
-          const commissionAmount = (letterAmount * commissionRate) / 100;
-          const totalCommission = commissionAmount + bsmvAndOtherCosts;
+          // Sayısal kontrolleri ekle
+          let commissionAmount = 0;
+          if (!isNaN(letterAmount) && !isNaN(commissionRate)) {
+            commissionAmount = (letterAmount * commissionRate) / 100;
+          }
+          
+          let totalCommission = commissionAmount;
+          if (!isNaN(bsmvAndOtherCosts)) {
+            totalCommission += bsmvAndOtherCosts;
+          }
           
           const currency = rowData.currency;
           return formatCurrency(totalCommission, currency);
