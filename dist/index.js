@@ -480,6 +480,7 @@ var DatabaseStorage = class {
       projectId: credits.projectId,
       principalAmount: credits.principalAmount,
       interestAmount: credits.interestAmount,
+      bsmvAndOtherCosts: credits.bsmvAndOtherCosts,
       totalRepaidAmount: credits.totalRepaidAmount,
       currency: credits.currency,
       creditDate: credits.creditDate,
@@ -517,6 +518,7 @@ var DatabaseStorage = class {
       projectId: credits.projectId,
       principalAmount: credits.principalAmount,
       interestAmount: credits.interestAmount,
+      bsmvAndOtherCosts: credits.bsmvAndOtherCosts,
       totalRepaidAmount: credits.totalRepaidAmount,
       currency: credits.currency,
       creditDate: credits.creditDate,
@@ -556,6 +558,7 @@ var DatabaseStorage = class {
       currency: insertCredit.currency,
       principalAmount: insertCredit.principalAmount?.toString() ?? "0",
       interestAmount: insertCredit.interestAmount?.toString() ?? "0",
+      bsmvAndOtherCosts: insertCredit.bsmvAndOtherCosts?.toString() ?? "0",
       totalRepaidAmount: insertCredit.totalRepaidAmount?.toString() ?? "0",
       creditDate: insertCredit.creditDate,
       maturityDate: insertCredit.maturityDate,
@@ -574,6 +577,7 @@ var DatabaseStorage = class {
     if (insertCredit.currency !== void 0) updateData.currency = insertCredit.currency;
     if (insertCredit.principalAmount !== void 0) updateData.principalAmount = insertCredit.principalAmount.toString();
     if (insertCredit.interestAmount !== void 0) updateData.interestAmount = insertCredit.interestAmount.toString();
+    if (insertCredit.bsmvAndOtherCosts !== void 0) updateData.bsmvAndOtherCosts = insertCredit.bsmvAndOtherCosts.toString();
     if (insertCredit.totalRepaidAmount !== void 0) updateData.totalRepaidAmount = insertCredit.totalRepaidAmount.toString();
     if (insertCredit.creditDate !== void 0) updateData.creditDate = insertCredit.creditDate;
     if (insertCredit.maturityDate !== void 0) updateData.maturityDate = insertCredit.maturityDate;
@@ -595,6 +599,7 @@ var DatabaseStorage = class {
       projectId: credits.projectId,
       principalAmount: credits.principalAmount,
       interestAmount: credits.interestAmount,
+      bsmvAndOtherCosts: credits.bsmvAndOtherCosts,
       totalRepaidAmount: credits.totalRepaidAmount,
       currency: credits.currency,
       creditDate: credits.creditDate,
@@ -632,6 +637,7 @@ var DatabaseStorage = class {
       projectId: credits.projectId,
       principalAmount: credits.principalAmount,
       interestAmount: credits.interestAmount,
+      bsmvAndOtherCosts: credits.bsmvAndOtherCosts,
       totalRepaidAmount: credits.totalRepaidAmount,
       currency: credits.currency,
       creditDate: credits.creditDate,
@@ -885,6 +891,34 @@ async function registerRoutes(app2) {
       res.json(letters);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch guarantee letters" });
+    }
+  });
+  app2.get("/api/guarantee-letters/total-commission", async (req, res) => {
+    try {
+      const letters = await storage.getGuaranteeLetters();
+      const commissionsByCurrency = letters.reduce((acc, letter) => {
+        const currency = letter.currency;
+        if (!acc[currency]) {
+          acc[currency] = {
+            currency,
+            totalCommission: 0,
+            totalBsmvAndOtherCosts: 0
+          };
+        }
+        const letterAmount = Number(letter.letterAmount);
+        const commissionRate = Number(letter.commissionRate);
+        const bsmvAndOtherCosts = Number(letter.bsmvAndOtherCosts || 0);
+        const commission = letterAmount * commissionRate / 100;
+        acc[currency].totalCommission += commission;
+        acc[currency].totalBsmvAndOtherCosts += bsmvAndOtherCosts;
+        return acc;
+      }, {});
+      const result = Object.values(commissionsByCurrency);
+      console.log("Calculated commissions:", result);
+      res.json(result);
+    } catch (error) {
+      console.error("Error calculating total commission:", error);
+      res.status(500).json({ message: "Failed to calculate total commission and costs" });
     }
   });
   app2.get("/api/guarantee-letters/:id", async (req, res) => {
